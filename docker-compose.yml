@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  hostvigil:
+    build: .
+    container_name: hostvigil
+    network_mode: host
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    volumes:
+      - ./data:/app/data
+      - ./config.yaml:/app/config.yaml:ro
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1

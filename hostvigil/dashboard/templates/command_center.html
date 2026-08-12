@@ -1,0 +1,366 @@
+{% extends "base.html" %}
+
+{% block title %}Command Center — HostVigil{% endblock %}
+{% block page_title %}Command Center{% endblock %}
+{% block page_subtitle %}<span class="live-indicator"></span> Live daemon telemetry, active scan queue, and one-click offensive operations.{% endblock %}
+
+{% block page_actions %}
+<span class="badge badge-primary" id="daemonStatus">
+    <i class="bi bi-activity me-1"></i>
+    <span id="daemonState">Initializing</span>
+</span>
+<span class="badge badge-secondary ms-2">
+    <i class="bi bi-arrow-repeat me-1"></i>
+    Cycle: <span id="cycleCount">0</span>
+</span>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.command-center {
+    background: transparent;
+    min-height: calc(100vh - 160px);
+    position: relative;
+    z-index: 1;
+}
+
+.live-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    background: var(--success);
+    border-radius: 50%;
+    margin-right: 8px;
+    vertical-align: middle;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; box-shadow: 0 0 0 0 var(--shadow-glow-success); }
+    50% { opacity: 0.5; box-shadow: 0 0 0 8px transparent; }
+}
+
+.status-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.25rem;
+    margin-bottom: 1.75rem;
+}
+
+.status-change {
+    font-size: 0.72rem;
+    padding: 2px 8px;
+    border-radius: 10rem;
+    margin-left: 8px;
+    vertical-align: middle;
+}
+
+.status-change.positive { background: var(--success-light); color: var(--success); }
+.status-change.negative { background: var(--danger-light); color: var(--danger); }
+
+.quick-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1.75rem;
+}
+
+.quick-actions .btn { padding: 0.9rem 1rem; font-weight: 600; }
+
+.progress-item { margin-bottom: 1.1rem; }
+.progress-item:last-child { margin-bottom: 0; }
+.progress-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--text-heading);
+    font-size: 0.85rem;
+    font-weight: 550;
+    margin-bottom: 0.45rem;
+}
+.progress-label span:last-child { font-family: var(--font-mono); font-size: 0.78rem; color: var(--text-muted); }
+.command-center .progress { height: 8px; }
+
+.queue-item {
+    display: flex;
+    align-items: center;
+    padding: 0.85rem 1rem;
+    background: var(--bg-input);
+    border-radius: var(--radius);
+    margin-bottom: 0.6rem;
+    border-left: 4px solid;
+}
+.queue-item:last-child { margin-bottom: 0; }
+.queue-item.running { border-left-color: var(--success); background: var(--success-light); }
+.queue-item.pending { border-left-color: var(--warning); }
+.queue-item.completed { border-left-color: var(--info); opacity: 0.6; }
+.queue-item.failed { border-left-color: var(--danger); }
+
+.queue-info { flex: 1; margin-left: 0.9rem; }
+.queue-status {
+    font-size: 0.72rem;
+    padding: 3px 10px;
+    border-radius: 15px;
+    text-transform: uppercase;
+    font-weight: 650;
+}
+
+.alert-feed {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 400px;
+    max-width: calc(100vw - 40px);
+    max-height: 400px;
+    overflow-y: auto;
+    z-index: 1000;
+}
+
+.alert-item {
+    background: var(--bg-card-solid);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 0.85rem 1rem;
+    margin-top: 10px;
+    border-left: 4px solid;
+    animation: slideIn 0.3s ease;
+    box-shadow: var(--shadow-md);
+    font-size: 0.85rem;
+}
+
+@keyframes slideIn {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+.alert-item.critical { border-left-color: var(--danger); }
+.alert-item.warning { border-left-color: var(--warning); }
+.alert-item.info { border-left-color: var(--info); }
+.alert-item.success { border-left-color: var(--success); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="command-center">
+    <!-- Status Grid -->
+    <div class="status-grid">
+        <div class="metric-tile animate-fade-in-up">
+            <div class="metric-value" id="totalHosts">0</div>
+            <div class="metric-label">
+                Total Hosts
+                <span class="status-change positive" id="hostsChange">+0%</span>
+            </div>
+        </div>
+
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.04s;">
+            <div class="metric-value" id="activeHosts">0</div>
+            <div class="metric-label">
+                Active Hosts
+                <span class="status-change" id="activeRate">0%</span>
+            </div>
+        </div>
+
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.08s;">
+            <div class="metric-value" id="openPorts">0</div>
+            <div class="metric-label">Open Ports</div>
+        </div>
+
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.12s;">
+            <div class="metric-value text-danger" id="criticalVulns">0</div>
+            <div class="metric-label">Critical Vulns</div>
+        </div>
+
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.16s;">
+            <div class="metric-value text-warning" id="credentialHits">0</div>
+            <div class="metric-label">Credential Hits</div>
+        </div>
+
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.2s;">
+            <div class="metric-value" id="scanProgressOverall">0%</div>
+            <div class="metric-label">Scan Progress</div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="quick-actions">
+        <button class="btn btn-primary" onclick="triggerScan('full')">
+            <i class="bi bi-play-fill me-1"></i> Full Scan
+        </button>
+        <button class="btn btn-outline-secondary" onclick="triggerScan('discover')">
+            <i class="bi bi-radar me-1"></i> Discovery
+        </button>
+        <button class="btn btn-success" onclick="triggerScan('nuclei')">
+            <i class="bi bi-bug-fill me-1"></i> Vulnerability Scan
+        </button>
+        <button class="btn btn-outline-secondary" onclick="triggerScan('enumerate')">
+            <i class="bi bi-list-check me-1"></i> Service Enum
+        </button>
+        <button class="btn btn-danger" onclick="triggerScan('analyze')">
+            <i class="bi bi-graph-up-arrow me-1"></i> ML Analysis
+        </button>
+        <button class="btn btn-outline-secondary" onclick="exportReport()">
+            <i class="bi bi-download me-1"></i> Export Report
+        </button>
+    </div>
+
+    <!-- Scan Progress Section -->
+    <div class="card mb-4 animate-fade-in-up">
+        <div class="card-header">
+            <div class="card-title"><i class="bi bi-speedometer2 me-2 text-primary"></i>Scan Progress</div>
+        </div>
+        <div class="card-body">
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>Discovery</span>
+                    <span id="discoverProgress">0%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar primary" id="discoverBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>TCP Scan</span>
+                    <span id="scanProgress">0%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar primary" id="scanBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>Vulnerability Assessment</span>
+                    <span id="nucleiProgress">0%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar danger" id="nucleiBar" style="width: 0%"></div>
+                </div>
+            </div>
+
+            <div class="progress-item">
+                <div class="progress-label">
+                    <span>Service Enumeration</span>
+                    <span id="enumerateProgress">0%</span>
+                </div>
+                <div class="progress">
+                    <div class="progress-bar info" id="enumerateBar" style="width: 0%"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scan Queue -->
+    <div class="card mb-4 animate-fade-in-up">
+        <div class="card-header">
+            <div class="card-title"><i class="bi bi-list-task me-2 text-primary"></i>Active Queue</div>
+        </div>
+        <div class="card-body" id="queueContainer">
+            <div class="empty-state py-4">
+                <i class="bi bi-inbox"></i>
+                <p class="text-sm">No active scans</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert Feed -->
+    <div class="alert-feed" id="alertFeed"></div>
+</div>
+
+<script>
+// Real-time data updates
+function updateStats(data) {
+    document.getElementById('totalHosts').textContent = data.total_hosts || 0;
+    document.getElementById('activeHosts').textContent = data.active_hosts || 0;
+    document.getElementById('openPorts').textContent = data.open_ports || 0;
+    document.getElementById('criticalVulns').textContent = data.critical_vulns || 0;
+    document.getElementById('credentialHits').textContent = data.credential_hits || 0;
+
+    // Update progress bars
+    if (data.progress) {
+        updateProgressBar('discover', data.progress.discover || 0);
+        updateProgressBar('scan', data.progress.scan || 0);
+        updateProgressBar('nuclei', data.progress.nuclei || 0);
+        updateProgressBar('enumerate', data.progress.enumerate || 0);
+    }
+}
+
+function updateProgressBar(type, progress) {
+    const bar = document.getElementById(type + 'Bar');
+    const label = document.getElementById(type + 'Progress');
+    if (bar && label) {
+        bar.style.width = progress + '%';
+        label.textContent = Math.round(progress) + '%';
+    }
+}
+
+function triggerScan(scanType) {
+    fetch('/api/scan/trigger', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({scan_type: scanType})
+    })
+    .then(r => r.json())
+    .then(data => {
+        showAlert(data.message || 'Scan started', 'info');
+    })
+    .catch(err => {
+        showAlert('Failed to start scan: ' + err, 'critical');
+    });
+}
+
+function showAlert(message, type = 'info') {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert-item ' + type;
+    alertDiv.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center gap-2">
+            <span>${message}</span>
+            <button class="btn btn-ghost btn-sm" onclick="this.parentElement.parentElement.remove()" title="Dismiss">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+    `;
+    document.getElementById('alertFeed').appendChild(alertDiv);
+
+    // Auto-remove after 30 seconds
+    setTimeout(() => alertDiv.remove(), 30000);
+}
+
+function exportReport() {
+    window.location.href = '/api/export/report';
+    showAlert('Generating report...', 'info');
+}
+
+// Poll for updates every 5 seconds (paused when tab hidden)
+var ccPollTimer = null;
+function ccPoll() {
+    fetch('/api/pipeline/live')
+        .then(r => r.json())
+        .then(data => {
+            updateStats(data.stats || {});
+
+            // Update daemon status
+            const daemonState = data.daemon?.state || 'unknown';
+            document.getElementById('daemonState').textContent = daemonState;
+            document.getElementById('cycleCount').textContent = data.daemon?.total_runs || 0;
+        })
+        .catch(() => {});
+}
+document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+        if (ccPollTimer) { clearInterval(ccPollTimer); ccPollTimer = null; }
+    } else if (!ccPollTimer) {
+        ccPoll();
+        ccPollTimer = setInterval(ccPoll, 5000);
+    }
+});
+ccPollTimer = setInterval(ccPoll, 5000);
+
+// Initial load
+fetch('/api/pipeline/live')
+    .then(r => r.json())
+    .then(data => updateStats(data.stats || {}))
+    .catch(() => {});
+</script>
+{% endblock %}

@@ -1,0 +1,705 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard — HostVigil{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Network reconnaissance overview{% endblock %}
+
+{% block page_actions %}
+<span class="badge badge-muted" id="lastUpdatedBadge"><i class="bi bi-clock"></i> Updated just now</span>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.pipeline-dot {
+    width: 10px; height: 10px; border-radius: 50%;
+    background: var(--text-muted); flex-shrink: 0;
+}
+.pipeline-dot.running {
+    background: var(--success);
+    box-shadow: 0 0 0 3px var(--success-muted);
+    animation: pulse-dot 1.5s infinite;
+}
+.pipeline-dot.stopped { background: var(--text-muted); }
+.pipeline-dot.idle { background: var(--warning); }
+.pipeline-divider {
+    width: 1px; height: 20px; background: var(--border-color);
+}
+.pipeline-progress {
+    width: 100%; height: 3px; background: var(--border-color);
+    border-radius: 2px; margin-top: 8px; overflow: hidden;
+    flex-basis: 100%;
+}
+.pipeline-progress-bar {
+    height: 100%; background: var(--primary);
+    border-radius: 2px; width: 0%;
+    animation: pipelinePulse 2s ease-in-out infinite;
+}
+@keyframes pipelinePulse {
+    0% { width: 15%; margin-left: 0; }
+    50% { width: 40%; margin-left: 30%; }
+    100% { width: 15%; margin-left: 85%; }
+}
+.vuln-list { max-height: 320px; overflow-y: auto; }
+.vuln-item {
+    display: flex; align-items: center; gap: 12px;
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border-color);
+    transition: background var(--transition-fast);
+}
+.vuln-item:last-child { border-bottom: none; }
+.vuln-item:hover { background: var(--bg-card-hover); }
+.vuln-item-info { flex: 1; min-width: 0; }
+.vuln-item-name {
+    font-size: 0.83rem; font-weight: 500;
+    color: var(--text-primary);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.vuln-item-host {
+    font-size: 0.73rem; color: var(--text-secondary); margin-top: 2px;
+}
+.scan-type-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 2px 8px; border-radius: var(--radius-full);
+    font-size: 0.7rem; font-weight: 600;
+    background: var(--primary-muted); color: var(--primary);
+}
+.scan-type-badge.discover { background: var(--info-muted); color: var(--info); }
+.scan-type-badge.scan { background: var(--success-muted); color: var(--success); }
+.scan-type-badge.nuclei { background: var(--danger-muted); color: var(--danger); }
+.scan-type-badge.fingerprint { background: var(--warning-muted); color: var(--warning); }
+.scan-type-badge.enumerate { background: var(--orange-muted); color: var(--orange); }
+#chartsRow { margin-top: 0; }
+@media (max-width: 991px) {
+    #chartsRow, .grid-2 { grid-template-columns: 1fr; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stat Cards -->
+<div class="stat-grid">
+    <div class="stat-card">
+        <div class="stat-icon info">
+            <i class="bi bi-hdd-stack-fill"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value" id="stat-hosts">0</div>
+            <div class="stat-label">Total Hosts</div>
+            <div class="stat-change up" id="stat-hosts-trend"><i class="bi bi-arrow-up-short"></i> --</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon success">
+            <i class="bi bi-ethernet"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value" id="stat-ports">0</div>
+            <div class="stat-label">Open Ports</div>
+            <div class="stat-change up" id="stat-ports-trend"><i class="bi bi-arrow-up-short"></i> --</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon danger">
+            <i class="bi bi-shield-exclamation"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value" id="stat-vulns">0</div>
+            <div class="stat-label">Vulnerabilities</div>
+            <div class="stat-change down" id="stat-vulns-trend"><i class="bi bi-arrow-down-short"></i> --</div>
+        </div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-icon warning">
+            <i class="bi bi-graph-up-arrow"></i>
+        </div>
+        <div class="stat-content">
+            <div class="stat-value" id="stat-anomalies">0</div>
+            <div class="stat-label">Anomalies</div>
+            <div class="stat-change up" id="stat-anomalies-trend"><i class="bi bi-arrow-up-short"></i> --</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="grid grid-2" id="chartsRow">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="bi bi-activity"></i> Scan Activity (7 days)</span>
+            <span class="badge badge-muted" id="chartScanTotal">0 scans</span>
+        </div>
+        <div class="card-body">
+            <div id="chartScanActivity" style="height: 260px;"></div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="bi bi-pie-chart-fill"></i> Vulnerability Breakdown</span>
+            <span class="badge badge-muted" id="chartVulnTotal">0 total</span>
+        </div>
+        <div class="card-body">
+            <div id="chartVulnDonut" style="height: 260px;"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Activity Row -->
+<div class="grid grid-2" style="margin-top: 16px;">
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="bi bi-clock-history"></i> Recent Scans</span>
+            <a href="/scan-controls" class="btn btn-xs btn-outline">View All</a>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div class="table-container" style="border: none; border-radius: 0;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Time</th>
+                            <th>Hosts</th>
+                            <th>Ports</th>
+                            <th>Duration</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recentScansBody">
+                        <tr><td colspan="5" class="table-empty"><i class="bi bi-inbox"></i>No scans yet</td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header">
+            <span class="card-title"><i class="bi bi-bug-fill"></i> Top Vulnerabilities</span>
+            <a href="/vulnerabilities" class="btn btn-xs btn-outline">View All</a>
+        </div>
+        <div class="card-body" style="padding: 0;">
+            <div id="topVulnsList" class="vuln-list">
+                <div class="table-empty"><i class="bi bi-shield-check"></i>No vulnerabilities detected</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pipeline Status Banner -->
+<div class="card" style="margin-top: 16px;" id="pipelineBanner">
+    <div class="card-body" style="padding: 14px 20px;">
+        <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <span class="pipeline-dot" id="pipelineDot"></span>
+                <span style="font-weight:600; font-size:0.85rem;" id="pipelineState">Daemon Stopped</span>
+            </div>
+            <div class="pipeline-divider"></div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text-secondary);">
+                <i class="bi bi-layers"></i>
+                <span id="pipelinePhase">No active phase</span>
+            </div>
+            <div class="pipeline-divider"></div>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:var(--text-secondary);">
+                <i class="bi bi-arrow-repeat"></i>
+                <span id="pipelineCycles">0 cycles</span>
+            </div>
+            <div style="margin-left:auto; display:flex; align-items:center; gap:6px; font-size:0.78rem; color:var(--text-muted);">
+                <i class="bi bi-clock"></i>
+                <span id="pipelineLastCycle">--</span>
+            </div>
+            <div class="pipeline-progress" id="pipelineProgress" style="display:none;">
+                <div class="pipeline-progress-bar" id="pipelineProgressBar"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    'use strict';
+
+    // --- State ---
+    var scanActivityChart = null;
+    var vulnDonutChart = null;
+    var lastStats = null;
+    var refreshTimer = null;
+    var updateCount = 0;
+
+    // --- Initialize Charts ---
+    function initScanActivityChart() {
+        var options = {
+            chart: {
+                type: 'area',
+                height: 260,
+                background: 'transparent',
+                toolbar: { show: false },
+                zoom: { enabled: false },
+                animations: { enabled: true, easing: 'easeinout', speed: 600 },
+                fontFamily: 'Inter, sans-serif'
+            },
+            theme: getChartTheme(),
+            colors: ['#7367f0', '#28c76f'],
+            series: [
+                { name: 'Hosts Discovered', data: [] },
+                { name: 'Ports Found', data: [] }
+            ],
+            xaxis: {
+                categories: [],
+                labels: { style: { fontSize: '11px' } },
+                axisBorder: { show: false },
+                axisTicks: { show: false }
+            },
+            yaxis: {
+                labels: {
+                    style: { fontSize: '11px' },
+                    formatter: function(v) { return Math.round(v); }
+                }
+            },
+            grid: {
+                borderColor: getChartGridColor(),
+                strokeDashArray: 3,
+                padding: { left: 8, right: 8 }
+            },
+            stroke: { curve: 'smooth', width: 2.5 },
+            fill: {
+                type: 'gradient',
+                gradient: {
+                    shadeIntensity: 1,
+                    opacityFrom: 0.4,
+                    opacityTo: 0.05,
+                    stops: [0, 95, 100]
+                }
+            },
+            dataLabels: { enabled: false },
+            tooltip: {
+                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light',
+                x: { format: 'MMM dd' }
+            },
+            legend: {
+                position: 'top',
+                horizontalAlign: 'right',
+                fontSize: '12px',
+                markers: { width: 8, height: 8, radius: 2 }
+            },
+            noData: {
+                text: 'No scan data available',
+                style: { fontSize: '13px', color: '#6b7280' }
+            }
+        };
+        scanActivityChart = new ApexCharts(document.getElementById('chartScanActivity'), options);
+        scanActivityChart.render();
+    }
+
+    function initVulnDonutChart() {
+        var options = {
+            chart: {
+                type: 'donut',
+                height: 260,
+                background: 'transparent',
+                animations: { enabled: true, easing: 'easeinout', speed: 600 },
+                fontFamily: 'Inter, sans-serif'
+            },
+            theme: getChartTheme(),
+            colors: ['#ea5455', '#ff9f43', '#febc3b', '#28c76f', '#00cfe8'],
+            series: [0, 0, 0, 0, 0],
+            labels: ['Critical', 'High', 'Medium', 'Low', 'Info'],
+            plotOptions: {
+                pie: {
+                    donut: {
+                        size: '70%',
+                        labels: {
+                            show: true,
+                            name: { fontSize: '13px', fontWeight: 600 },
+                            value: { fontSize: '1.4rem', fontWeight: 700 },
+                            total: {
+                                show: true,
+                                label: 'Total',
+                                fontSize: '12px',
+                                color: '#6b7280'
+                            }
+                        }
+                    }
+                }
+            },
+            dataLabels: { enabled: false },
+            legend: {
+                position: 'bottom',
+                fontSize: '12px',
+                markers: { width: 8, height: 8, radius: 2 },
+                itemMargin: { horizontal: 8, vertical: 4 }
+            },
+            stroke: { width: 2, colors: [getChartBgColor()] },
+            tooltip: {
+                theme: document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light'
+            },
+            noData: {
+                text: 'No vulnerabilities found',
+                style: { fontSize: '13px', color: '#6b7280' }
+            }
+        };
+        vulnDonutChart = new ApexCharts(document.getElementById('chartVulnDonut'), options);
+        vulnDonutChart.render();
+    }
+
+    // --- Data Fetching ---
+    function fetchDashboardData() {
+        fetch('/api/stats')
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                updateStatCards(data);
+                updateCharts(data);
+                updateRecentScans(data.recent_scans || []);
+                updateTopVulns();
+                lastStats = data;
+                updateCount++;
+                updateLastUpdated();
+            })
+            .catch(function(err) {
+                console.warn('[Dashboard] stats fetch failed:', err.message);
+            });
+
+        fetchPipelineStatus();
+    }
+
+    function fetchPipelineStatus() {
+        fetch('/api/pipeline/live')
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
+            .then(function(data) {
+                updatePipelineBanner(data);
+            })
+            .catch(function() {});
+    }
+
+    // --- Update Stat Cards ---
+    function updateStatCards(data) {
+        var hosts = data.total_hosts || 0;
+        var ports = data.total_ports || 0;
+        var vulns = (data.vulnerabilities && data.vulnerabilities.total) || 0;
+        var anomalies = data.active_anomalies || 0;
+
+        animateStatTo('stat-hosts', hosts);
+        animateStatTo('stat-ports', ports);
+        animateStatTo('stat-vulns', vulns);
+        animateStatTo('stat-anomalies', anomalies);
+
+        if (lastStats) {
+            setTrend('stat-hosts-trend', hosts, lastStats.total_hosts || 0);
+            setTrend('stat-ports-trend', ports, lastStats.total_ports || 0);
+            setTrend('stat-vulns-trend', vulns, (lastStats.vulnerabilities && lastStats.vulnerabilities.total) || 0);
+            setTrend('stat-anomalies-trend', anomalies, lastStats.active_anomalies || 0);
+        } else {
+            setTrendInitial('stat-hosts-trend', hosts);
+            setTrendInitial('stat-ports-trend', ports);
+            setTrendInitial('stat-vulns-trend', vulns);
+            setTrendInitial('stat-anomalies-trend', anomalies);
+        }
+    }
+
+    function animateStatTo(id, target) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var current = parseInt(el.textContent.replace(/,/g, '')) || 0;
+        if (current !== target) {
+            HV.animateValue(el, current, target, updateCount === 0 ? 1200 : 600);
+        }
+    }
+
+    function setTrend(id, newVal, oldVal) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (oldVal === 0 && newVal === 0) {
+            el.className = 'stat-change';
+            el.innerHTML = '<i class="bi bi-dash"></i> --';
+            el.style.color = 'var(--text-muted)';
+            return;
+        }
+        if (oldVal === 0) {
+            el.className = 'stat-change up';
+            el.innerHTML = '<i class="bi bi-arrow-up-short"></i> new';
+            return;
+        }
+        var diff = newVal - oldVal;
+        var pct = Math.abs(Math.round((diff / oldVal) * 100));
+        if (diff > 0) {
+            el.className = 'stat-change up';
+            el.innerHTML = '<i class="bi bi-arrow-up-short"></i> +' + pct + '%';
+        } else if (diff < 0) {
+            el.className = 'stat-change down';
+            el.innerHTML = '<i class="bi bi-arrow-down-short"></i> -' + pct + '%';
+        } else {
+            el.className = 'stat-change';
+            el.innerHTML = '<i class="bi bi-dash"></i> 0%';
+            el.style.color = 'var(--text-muted)';
+        }
+    }
+
+    function setTrendInitial(id, val) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (val > 0) {
+            el.className = 'stat-change up';
+            el.innerHTML = '<i class="bi bi-arrow-up-short"></i> ' + formatCompactNumber(val) + ' found';
+        } else {
+            el.className = 'stat-change';
+            el.innerHTML = '<i class="bi bi-dash"></i> --';
+            el.style.color = 'var(--text-muted)';
+        }
+    }
+
+    // --- Update Charts ---
+    function updateCharts(data) {
+        updateScanActivityChart(data.recent_scans || []);
+        updateVulnDonutChart(data.vulnerabilities || {});
+    }
+
+    function updateScanActivityChart(scans) {
+        var days = {};
+        var now = new Date();
+        for (var i = 6; i >= 0; i--) {
+            var d = new Date(now);
+            d.setDate(d.getDate() - i);
+            var key = d.toISOString().slice(0, 10);
+            days[key] = { hosts: 0, ports: 0 };
+        }
+
+        scans.forEach(function(scan) {
+            if (!scan.start_time) return;
+            var dateKey = scan.start_time.slice(0, 10);
+            if (days[dateKey]) {
+                days[dateKey].hosts += scan.hosts_found || 0;
+                days[dateKey].ports += scan.ports_found || 0;
+            }
+        });
+
+        var categories = [];
+        var hostsData = [];
+        var portsData = [];
+        Object.keys(days).sort().forEach(function(key) {
+            var parts = key.split('-');
+            categories.push(parts[1] + '/' + parts[2]);
+            hostsData.push(days[key].hosts);
+            portsData.push(days[key].ports);
+        });
+
+        var totalScans = scans.length;
+        document.getElementById('chartScanTotal').textContent = totalScans + ' scan' + (totalScans !== 1 ? 's' : '');
+
+        scanActivityChart.updateOptions({ xaxis: { categories: categories } }, false, false);
+        scanActivityChart.updateSeries([
+            { name: 'Hosts Discovered', data: hostsData },
+            { name: 'Ports Found', data: portsData }
+        ]);
+    }
+
+    function updateVulnDonutChart(vulns) {
+        var critical = vulns.critical || 0;
+        var high = vulns.high || 0;
+        var medium = vulns.medium || 0;
+        var low = vulns.low || 0;
+        var info = vulns.info || 0;
+        var total = critical + high + medium + low + info;
+
+        document.getElementById('chartVulnTotal').textContent = total + ' total';
+        vulnDonutChart.updateSeries([critical, high, medium, low, info]);
+    }
+
+    // --- Update Recent Scans ---
+    function updateRecentScans(scans) {
+        var tbody = document.getElementById('recentScansBody');
+        if (!tbody) return;
+
+        if (!scans || scans.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="table-empty"><i class="bi bi-inbox"></i>No scans yet</td></tr>';
+            return;
+        }
+
+        var html = '';
+        scans.slice(0, 10).forEach(function(scan) {
+            var scanType = scan.scan_type || 'unknown';
+            var typeClass = scanType.toLowerCase().replace(/[^a-z]/g, '');
+            var startTime = formatTime(scan.start_time);
+            var hosts = scan.hosts_found || 0;
+            var ports = scan.ports_found || 0;
+            var duration = computeDuration(scan.start_time, scan.end_time);
+
+            html += '<tr>';
+            html += '<td><span class="scan-type-badge ' + escapeHtml(typeClass) + '">' + escapeHtml(scanType) + '</span></td>';
+            html += '<td style="font-size:0.8rem; color:var(--text-secondary);">' + escapeHtml(startTime) + '</td>';
+            html += '<td>' + hosts + '</td>';
+            html += '<td>' + ports + '</td>';
+            html += '<td style="font-size:0.78rem; color:var(--text-muted);">' + duration + '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+
+    function computeDuration(start, end) {
+        if (!start) return '--';
+        if (!end) return '<span style="color:var(--success);">running</span>';
+        try {
+            var ms = new Date(end) - new Date(start);
+            if (ms < 0) return '--';
+            var secs = Math.floor(ms / 1000);
+            if (secs < 60) return secs + 's';
+            var mins = Math.floor(secs / 60);
+            var remSecs = secs % 60;
+            if (mins < 60) return mins + 'm ' + remSecs + 's';
+            var hrs = Math.floor(mins / 60);
+            var remMins = mins % 60;
+            return hrs + 'h ' + remMins + 'm';
+        } catch(e) { return '--'; }
+    }
+
+    // --- Update Top Vulnerabilities ---
+    function updateTopVulns() {
+        var container = document.getElementById('topVulnsList');
+        if (!container) return;
+
+        fetch('/api/vulnerabilities?per_page=5&sort=severity&order=desc')
+            .then(function(r) { return r.ok ? r.json() : { vulnerabilities: [] }; })
+            .then(function(vdata) {
+                var vulns = vdata.vulnerabilities || vdata.items || [];
+                if (!vulns.length) {
+                    container.innerHTML = '<div class="table-empty"><i class="bi bi-shield-check"></i>No vulnerabilities detected</div>';
+                    return;
+                }
+                var html = '';
+                vulns.slice(0, 5).forEach(function(v) {
+                    var sev = (v.severity || 'info').toLowerCase();
+                    var badgeClass = getSevBadgeClass(sev);
+                    var name = v.name || v.template_id || 'Unknown';
+                    var host = v.ip || v.host || '--';
+
+                    html += '<div class="vuln-item">';
+                    html += '<span class="badge ' + badgeClass + '">' + escapeHtml(sev) + '</span>';
+                    html += '<div class="vuln-item-info">';
+                    html += '<div class="vuln-item-name" title="' + escapeHtml(name) + '">' + escapeHtml(name) + '</div>';
+                    html += '<div class="vuln-item-host"><i class="bi bi-pc-display"></i> ' + escapeHtml(host) + '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                container.innerHTML = html;
+            })
+            .catch(function() {
+                container.innerHTML = '<div class="table-empty"><i class="bi bi-shield-check"></i>No vulnerabilities detected</div>';
+            });
+    }
+
+    function getSevBadgeClass(sev) {
+        switch (sev) {
+            case 'critical': return 'badge-danger';
+            case 'high': return 'badge-orange';
+            case 'medium': return 'badge-warning';
+            case 'low': return 'badge-success';
+            default: return 'badge-info';
+        }
+    }
+
+    // --- Pipeline Banner ---
+    function updatePipelineBanner(data) {
+        var dot = document.getElementById('pipelineDot');
+        var stateEl = document.getElementById('pipelineState');
+        var phaseEl = document.getElementById('pipelinePhase');
+        var cyclesEl = document.getElementById('pipelineCycles');
+        var lastCycleEl = document.getElementById('pipelineLastCycle');
+        var progressEl = document.getElementById('pipelineProgress');
+
+        var daemon = data.daemon;
+        var isRunning = data.running;
+
+        if (!daemon) {
+            dot.className = 'pipeline-dot stopped';
+            stateEl.textContent = 'Daemon Not Running';
+            stateEl.style.color = '';
+            phaseEl.textContent = 'Standalone dashboard mode';
+            cyclesEl.textContent = '--';
+            lastCycleEl.textContent = '--';
+            progressEl.style.display = 'none';
+            return;
+        }
+
+        var state = daemon.state || 'unknown';
+        if (state === 'running' || isRunning) {
+            dot.className = 'pipeline-dot running';
+            stateEl.textContent = 'Daemon Running';
+            stateEl.style.color = 'var(--success)';
+            progressEl.style.display = 'block';
+        } else if (state === 'idle' || state === 'waiting') {
+            dot.className = 'pipeline-dot idle';
+            stateEl.textContent = 'Daemon Idle';
+            stateEl.style.color = 'var(--warning)';
+            progressEl.style.display = 'none';
+        } else {
+            dot.className = 'pipeline-dot stopped';
+            stateEl.textContent = 'Daemon ' + state.charAt(0).toUpperCase() + state.slice(1);
+            stateEl.style.color = '';
+            progressEl.style.display = 'none';
+        }
+
+        phaseEl.textContent = daemon.current_phase
+            ? daemon.current_phase.replace(/_/g, ' ').replace(/\b\w/g, function(c) { return c.toUpperCase(); })
+            : 'Waiting for next cycle';
+
+        cyclesEl.textContent = (daemon.total_runs || 0) + ' cycle' + (daemon.total_runs !== 1 ? 's' : '');
+
+        if (daemon.last_run_end) {
+            lastCycleEl.textContent = 'Last: ' + formatTime(daemon.last_run_end);
+        } else if (daemon.last_run_start) {
+            lastCycleEl.textContent = 'Started: ' + formatTime(daemon.last_run_start);
+        } else {
+            lastCycleEl.textContent = '--';
+        }
+    }
+
+    // --- Last Updated Badge ---
+    function updateLastUpdated() {
+        var el = document.getElementById('lastUpdatedBadge');
+        if (!el) return;
+        var now = new Date();
+        el.innerHTML = '<i class="bi bi-clock"></i> Updated ' +
+            now.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    }
+
+    // --- Theme Change Observer ---
+    var themeObserver = new MutationObserver(function() {
+        var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+        var tooltipTheme = isDark ? 'dark' : 'light';
+        if (scanActivityChart) {
+            scanActivityChart.updateOptions({
+                theme: getChartTheme(),
+                grid: { borderColor: getChartGridColor() },
+                tooltip: { theme: tooltipTheme }
+            }, false, false);
+        }
+        if (vulnDonutChart) {
+            vulnDonutChart.updateOptions({
+                theme: getChartTheme(),
+                stroke: { colors: [getChartBgColor()] },
+                tooltip: { theme: tooltipTheme }
+            }, false, false);
+        }
+    });
+    themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+    // --- Init ---
+    initScanActivityChart();
+    initVulnDonutChart();
+    fetchDashboardData();
+
+    // Auto-refresh every 15 seconds
+    refreshTimer = setInterval(fetchDashboardData, 15000);
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (refreshTimer) clearInterval(refreshTimer);
+        themeObserver.disconnect();
+    });
+
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,1274 @@
+{% extends "base.html" %}
+{% block title %}Settings - HostVigil{% endblock %}
+{% block page_title %}Configuration{% endblock %}
+{% block page_subtitle %}Manage scan parameters and behavior{% endblock %}
+
+{% block extra_css %}
+<style>
+.settings-profiles{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.profile-card{padding:1.25rem;border-radius:var(--radius-lg);border:2px solid var(--border-color);background:var(--bg-card);cursor:pointer;text-align:center;transition:all .2s}
+.profile-card:hover{border-color:var(--primary);transform:translateY(-2px);box-shadow:0 4px 12px rgba(115,103,240,.15)}
+.profile-card.active{border-color:var(--primary);background:rgba(115,103,240,.08)}
+.profile-card .profile-icon{font-size:1.75rem;margin-bottom:.5rem;color:var(--primary)}
+.profile-card .profile-name{font-weight:600;font-size:.9rem;color:var(--text-primary)}
+.profile-card .profile-desc{font-size:.75rem;color:var(--text-muted);margin-top:.25rem}
+
+.settings-section{margin-bottom:1rem}
+.section-card{background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);overflow:hidden}
+.section-header{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;cursor:pointer;user-select:none;transition:background .15s}
+.section-header:hover{background:var(--bg-hover)}
+.section-header h3{font-size:.95rem;font-weight:600;color:var(--text-primary);display:flex;align-items:center;gap:.5rem;margin:0}
+.section-header h3 i{color:var(--primary);font-size:1.1rem}
+.section-chevron{transition:transform .2s;color:var(--text-muted)}
+.section-card.collapsed .section-body{display:none}
+.section-card.collapsed .section-chevron{transform:rotate(-90deg)}
+.section-body{padding:1.25rem;border-top:1px solid var(--border-color)}
+
+.field-group{margin-bottom:1.25rem}
+.field-group:last-child{margin-bottom:0}
+.field-label{display:flex;align-items:center;gap:.4rem;margin-bottom:.4rem;font-size:.8rem;font-weight:500;color:var(--text-secondary)}
+.field-label label{margin:0}
+.help-btn{width:18px;height:18px;border-radius:50%;border:1px solid var(--border-color);background:transparent;color:var(--text-muted);font-size:.65rem;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.help-btn:hover{background:var(--primary);color:#fff;border-color:var(--primary)}
+
+.help-popover{position:absolute;z-index:1100;width:280px;padding:.875rem;background:var(--bg-card);border:1px solid var(--border-color);border-radius:var(--radius-lg);box-shadow:0 8px 24px rgba(0,0,0,.25);font-size:.78rem;line-height:1.5;color:var(--text-secondary);animation:fadeIn .15s}
+.help-popover .help-title{font-weight:600;color:var(--text-primary);margin-bottom:.4rem;font-size:.82rem}
+.help-popover .help-meta{display:flex;flex-direction:column;gap:.25rem;margin-top:.5rem;padding-top:.5rem;border-top:1px solid var(--border-color)}
+.help-popover .help-meta span{display:flex;align-items:center;gap:.35rem}
+.help-popover .help-meta span i{color:var(--primary);font-size:.7rem}
+
+.range-wrap{display:flex;align-items:center;gap:.75rem}
+.range-wrap input[type=range]{flex:1}
+.range-val{min-width:48px;text-align:center;font-size:.8rem;font-weight:600;color:var(--primary);padding:.2rem .5rem;background:rgba(115,103,240,.1);border-radius:var(--radius-sm)}
+
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:.5rem}
+.check-item{display:flex;align-items:flex-start;gap:.5rem;padding:.5rem .625rem;border-radius:var(--radius-md);border:1px solid var(--border-color);transition:all .15s}
+.check-item:hover{border-color:var(--primary);background:rgba(115,103,240,.04)}
+.check-item input[type=checkbox]{margin-top:2px;flex-shrink:0}
+.check-item .check-info .check-name{font-size:.8rem;font-weight:500;color:var(--text-primary)}
+.check-item .check-info .check-desc{font-size:.7rem;color:var(--text-muted);margin-top:1px}
+
+.chip-group{display:flex;flex-wrap:wrap;gap:.4rem}
+.chip{padding:.3rem .7rem;border-radius:var(--radius-full);border:1px solid var(--border-color);font-size:.75rem;cursor:pointer;transition:all .15s;user-select:none}
+.chip:hover{border-color:var(--primary)}
+.chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+.chip.sev-critical.active{background:var(--danger);border-color:var(--danger)}
+.chip.sev-high.active{background:#ff9f43;border-color:#ff9f43;color:#000}
+.chip.sev-medium.active{background:#ffc107;border-color:#ffc107;color:#000}
+.chip.sev-low.active{background:var(--success);border-color:var(--success)}
+.chip.sev-info.active{background:var(--info);border-color:var(--info)}
+
+.save-bar{position:sticky;bottom:0;left:0;right:0;padding:1rem 1.5rem;background:var(--bg-card);border-top:1px solid var(--border-color);display:flex;align-items:center;justify-content:space-between;z-index:100;backdrop-filter:blur(8px);transition:transform .3s}
+.save-bar.hidden{transform:translateY(100%);pointer-events:none}
+.save-bar .changes-count{font-size:.82rem;color:var(--text-muted)}
+.save-bar .changes-count strong{color:var(--primary)}
+.save-bar .save-actions{display:flex;gap:.5rem}
+
+.field-error{font-size:.72rem;color:var(--danger);margin-top:.25rem;display:none}
+.field-group.has-error .field-error{display:block}
+.field-group.has-error input,.field-group.has-error textarea,.field-group.has-error select{border-color:var(--danger)}
+
+.time-inputs{display:flex;align-items:center;gap:.5rem;margin-top:.5rem}
+.time-inputs input[type=time]{width:120px}
+
+@media(max-width:768px){
+  .settings-profiles{grid-template-columns:1fr 1fr}
+  .check-grid{grid-template-columns:1fr}
+  .save-bar{padding:.75rem 1rem}
+}
+@media(max-width:480px){
+  .settings-profiles{grid-template-columns:1fr}
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Quick Profiles -->
+<div class="settings-profiles" id="profilesBar">
+  <div class="profile-card" data-profile="basic">
+    <div class="profile-icon"><i class="bi bi-shield-check"></i></div>
+    <div class="profile-name">Basic</div>
+    <div class="profile-desc">Home lab, maximum stealth</div>
+  </div>
+  <div class="profile-card" data-profile="sme">
+    <div class="profile-icon"><i class="bi bi-building"></i></div>
+    <div class="profile-name">SME</div>
+    <div class="profile-desc">Small business, balanced</div>
+  </div>
+  <div class="profile-card" data-profile="enterprise">
+    <div class="profile-icon"><i class="bi bi-globe2"></i></div>
+    <div class="profile-name">Enterprise</div>
+    <div class="profile-desc">200k+ hosts, fast scans</div>
+  </div>
+  <div class="profile-card" data-profile="custom">
+    <div class="profile-icon"><i class="bi bi-sliders2"></i></div>
+    <div class="profile-name">Custom</div>
+    <div class="profile-desc">Manual configuration</div>
+  </div>
+</div>
+
+<!-- Section: Target Configuration -->
+<div class="settings-section">
+  <div class="section-card" id="sec-targets">
+    <div class="section-header" onclick="toggleSection('sec-targets')">
+      <h3><i class="bi bi-bullseye"></i> Target Configuration</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-target-ranges">Target Ranges</label>
+          <button class="help-btn" data-help="target_ranges">?</button>
+        </div>
+        <textarea id="cfg-target-ranges" class="form-control" rows="4" placeholder="10.0.0.0/8&#10;192.168.0.0/16&#10;172.16.0.0/12"></textarea>
+        <div class="field-error">Enter valid CIDR ranges (e.g. 192.168.1.0/24), one per line or comma-separated</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Discovery Settings -->
+<div class="settings-section">
+  <div class="section-card" id="sec-discovery">
+    <div class="section-header" onclick="toggleSection('sec-discovery')">
+      <h3><i class="bi bi-search"></i> Discovery Settings</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label>Discovery Techniques</label>
+          <button class="help-btn" data-help="discovery_techniques">?</button>
+        </div>
+        <div class="check-grid" id="techniqueChecks">
+          <label class="check-item"><input type="checkbox" value="nmap_discover" checked><div class="check-info"><div class="check-name">Nmap Discover</div><div class="check-desc">Fast host discovery using nmap -sn</div></div></label>
+          <label class="check-item"><input type="checkbox" value="arp_sweep"><div class="check-info"><div class="check-name">ARP Sweep</div><div class="check-desc">ARP broadcast sweep (LAN only)</div></div></label>
+          <label class="check-item"><input type="checkbox" value="nbns_query" checked><div class="check-info"><div class="check-name">NetBIOS/NBNS</div><div class="check-desc">NetBIOS name queries</div></div></label>
+          <label class="check-item"><input type="checkbox" value="mdns_enum" checked><div class="check-info"><div class="check-name">mDNS Enum</div><div class="check-desc">Multicast DNS .local discovery</div></div></label>
+          <label class="check-item"><input type="checkbox" value="ssdp_discover" checked><div class="check-info"><div class="check-name">SSDP/UPnP</div><div class="check-desc">UPnP SSDP multicast discovery</div></div></label>
+          <label class="check-item"><input type="checkbox" value="tcp_syn_discover" checked><div class="check-info"><div class="check-name">TCP SYN Ping</div><div class="check-desc">TCP SYN alive check on common ports</div></div></label>
+          <label class="check-item"><input type="checkbox" value="snmp_sweep" checked><div class="check-info"><div class="check-name">SNMP Sweep</div><div class="check-desc">SNMP community string probes</div></div></label>
+          <label class="check-item"><input type="checkbox" value="dns_reverse_walk" checked><div class="check-info"><div class="check-name">DNS Reverse Walk</div><div class="check-desc">Reverse DNS PTR lookups with jitter</div></div></label>
+          <label class="check-item"><input type="checkbox" value="passive_sniff" checked><div class="check-info"><div class="check-name">Passive Sniff</div><div class="check-desc">Zero-packet passive listening</div></div></label>
+          <label class="check-item"><input type="checkbox" value="dhcp_passive" checked><div class="check-info"><div class="check-name">DHCP Passive</div><div class="check-desc">Silent DHCP traffic capture</div></div></label>
+          <label class="check-item"><input type="checkbox" value="dns_custom"><div class="check-info"><div class="check-name">Custom DNS</div><div class="check-desc">Internal DNS zone lookups</div></div></label>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nmap-timing">Nmap Timing Template</label>
+          <button class="help-btn" data-help="nmap_timing">?</button>
+        </div>
+        <select id="cfg-nmap-timing" class="form-control">
+          <option value="T0">T0 — Paranoid (5 min between probes)</option>
+          <option value="T1">T1 — Sneaky (15s between probes)</option>
+          <option value="T2" selected>T2 — Polite (0.4s between probes)</option>
+          <option value="T3">T3 — Normal (default nmap)</option>
+          <option value="T4">T4 — Aggressive (fast, may trigger IDS)</option>
+          <option value="T5">T5 — Insane (fastest, unreliable on slow nets)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nmap-chunks">Parallel Nmap Chunks</label>
+          <button class="help-btn" data-help="nmap_chunks">?</button>
+        </div>
+        <input type="number" id="cfg-nmap-chunks" class="form-control" min="1" max="16" value="1" style="width:120px">
+        <div class="field-error">Must be between 1 and 16</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Stealth Settings -->
+<div class="settings-section">
+  <div class="section-card" id="sec-stealth">
+    <div class="section-header" onclick="toggleSection('sec-stealth')">
+      <h3><i class="bi bi-incognito"></i> Stealth Settings</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-min-delay">Min Delay (seconds)</label>
+          <button class="help-btn" data-help="min_delay">?</button>
+        </div>
+        <div class="range-wrap">
+          <input type="range" id="cfg-min-delay" min="0.1" max="60" step="0.1" value="10">
+          <span class="range-val" id="val-min-delay">10.0s</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-max-delay">Max Delay (seconds)</label>
+          <button class="help-btn" data-help="max_delay">?</button>
+        </div>
+        <div class="range-wrap">
+          <input type="range" id="cfg-max-delay" min="0.1" max="120" step="0.1" value="45">
+          <span class="range-val" id="val-max-delay">45.0s</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-jitter">Jitter Factor</label>
+          <button class="help-btn" data-help="jitter_factor">?</button>
+        </div>
+        <div class="range-wrap">
+          <input type="range" id="cfg-jitter" min="0" max="1" step="0.05" value="0.3">
+          <span class="range-val" id="val-jitter">0.30</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-max-threads">Max Threads</label>
+          <button class="help-btn" data-help="max_threads">?</button>
+        </div>
+        <input type="number" id="cfg-max-threads" class="form-control" min="1" max="50" value="3" style="width:120px">
+        <div class="field-error">Must be between 1 and 50</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-scan-window">Scan Window</label>
+          <button class="help-btn" data-help="scan_window">?</button>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="cfg-scan-window">
+          <span class="toggle-slider"></span>
+        </label>
+        <div class="time-inputs" id="scanWindowTimes" style="display:none">
+          <label style="font-size:.78rem;color:var(--text-muted)">Start:</label>
+          <input type="time" id="cfg-window-start" class="form-control" value="08:00">
+          <label style="font-size:.78rem;color:var(--text-muted)">End:</label>
+          <input type="time" id="cfg-window-end" class="form-control" value="18:00">
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-decoy-ips">Decoy IPs</label>
+          <button class="help-btn" data-help="decoy_ips">?</button>
+        </div>
+        <textarea id="cfg-decoy-ips" class="form-control" rows="2" placeholder="10.0.0.1, 10.0.0.254, 172.16.0.1"></textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Scanner Settings -->
+<div class="settings-section">
+  <div class="section-card" id="sec-scanner">
+    <div class="section-header" onclick="toggleSection('sec-scanner')">
+      <h3><i class="bi bi-ethernet"></i> Scanner Settings</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label>Scanner Mode</label>
+          <button class="help-btn" data-help="scanner_mode">?</button>
+        </div>
+        <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem">
+            <input type="radio" name="cfg-scanner-mode" value="two_phase"> Two-Phase (naabu → Nmap)
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem">
+            <input type="radio" name="cfg-scanner-mode" value="nmap_only" checked> Nmap Only (stealth)
+          </label>
+        </div>
+        <p class="field-hint" style="margin-top:.4rem;font-size:.75rem;color:var(--text-muted)">
+          <i class="bi bi-info-circle"></i> naabu is extremely fast but <strong>not stealthy</strong> — it generates high-volume traffic that IDS/IPS will detect. Use "Nmap Only" for SOC-monitored networks.
+        </p>
+      </div>
+
+      <!-- naabu sub-settings (shown only when two_phase is selected) -->
+      <div id="naabu-settings" class="sub-settings" style="display:none;margin-left:1rem;padding-left:1rem;border-left:2px solid var(--border-color)">
+        <div class="field-group">
+          <div class="field-label">
+            <label for="cfg-naabu-rate">Rate (packets/sec)</label>
+            <button class="help-btn" data-help="naabu_rate">?</button>
+          </div>
+          <input type="number" id="cfg-naabu-rate" class="form-control" min="100" max="100000" step="100" value="5000" style="width:150px">
+        </div>
+        <div class="field-group">
+          <div class="field-label">
+            <label for="cfg-naabu-threads">Threads</label>
+            <button class="help-btn" data-help="naabu_threads">?</button>
+          </div>
+          <input type="number" id="cfg-naabu-threads" class="form-control" min="1" max="1000" step="1" value="50" style="width:150px">
+        </div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label">
+          <label>Scan Type</label>
+          <button class="help-btn" data-help="scan_type">?</button>
+        </div>
+        <div style="display:flex;gap:1.5rem">
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem">
+            <input type="radio" name="cfg-scan-type" value="connect" checked> TCP Connect
+          </label>
+          <label style="display:flex;align-items:center;gap:.4rem;cursor:pointer;font-size:.82rem">
+            <input type="radio" name="cfg-scan-type" value="syn"> TCP SYN (requires root)
+          </label>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-port-profile">Port Profile</label>
+          <button class="help-btn" data-help="port_profile">?</button>
+        </div>
+        <select id="cfg-port-profile" class="form-control" style="width:280px">
+          <option value="quick">Quick — 5 ports (22, 80, 135, 443, 445)</option>
+          <option value="standard" selected>Standard — 19 common ports</option>
+          <option value="top1000">Top 1000 — nmap default 1000 ports</option>
+          <option value="full">Full — 65535 ports (very slow)</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-udp-scan">UDP Scan</label>
+          <button class="help-btn" data-help="udp_scan">?</button>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="cfg-udp-scan" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-banner-grab">Banner Grab</label>
+          <button class="help-btn" data-help="banner_grab">?</button>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="cfg-banner-grab" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-connect-timeout">Connect Timeout (seconds)</label>
+          <button class="help-btn" data-help="connect_timeout">?</button>
+        </div>
+        <input type="number" id="cfg-connect-timeout" class="form-control" min="0.1" max="10" step="0.1" value="2" style="width:120px">
+        <div class="field-error">Must be between 0.1 and 10 seconds</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Service Detection -->
+<div class="settings-section">
+  <div class="section-card" id="sec-service">
+    <div class="section-header" onclick="toggleSection('sec-service')">
+      <h3><i class="bi bi-layers"></i> Service Detection</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-version-intensity">Version Intensity</label>
+          <button class="help-btn" data-help="version_intensity">?</button>
+        </div>
+        <div class="range-wrap">
+          <input type="range" id="cfg-version-intensity" min="0" max="9" step="1" value="5">
+          <span class="range-val" id="val-version-intensity">5</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-service-timing">Service Scan Timing</label>
+          <button class="help-btn" data-help="service_timing">?</button>
+        </div>
+        <select id="cfg-service-timing" class="form-control" style="width:280px">
+          <option value="T0">T0 — Paranoid</option>
+          <option value="T1">T1 — Sneaky</option>
+          <option value="T2" selected>T2 — Polite</option>
+          <option value="T3">T3 — Normal</option>
+          <option value="T4">T4 — Aggressive</option>
+          <option value="T5">T5 — Insane</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-service-parallel">Parallel Processes</label>
+          <button class="help-btn" data-help="service_parallel">?</button>
+        </div>
+        <input type="number" id="cfg-service-parallel" class="form-control" min="1" max="16" value="4" style="width:120px">
+        <div class="field-error">Must be between 1 and 16</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: ML Engine -->
+<div class="settings-section">
+  <div class="section-card" id="sec-ml">
+    <div class="section-header" onclick="toggleSection('sec-ml')">
+      <h3><i class="bi bi-cpu"></i> ML Engine</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-anomaly-threshold">Anomaly Threshold</label>
+          <button class="help-btn" data-help="anomaly_threshold">?</button>
+        </div>
+        <div class="range-wrap">
+          <input type="range" id="cfg-anomaly-threshold" min="0.1" max="1.0" step="0.05" value="0.65">
+          <span class="range-val" id="val-anomaly-threshold">0.65</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-min-samples">Min Training Samples</label>
+          <button class="help-btn" data-help="min_samples">?</button>
+        </div>
+        <input type="number" id="cfg-min-samples" class="form-control" min="10" max="500" value="50" style="width:120px">
+        <div class="field-error">Must be between 10 and 500</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-training-interval">Training Interval (hours)</label>
+          <button class="help-btn" data-help="training_interval">?</button>
+        </div>
+        <input type="number" id="cfg-training-interval" class="form-control" min="1" max="168" value="24" style="width:120px">
+        <div class="field-error">Must be between 1 and 168 hours</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Nuclei -->
+<div class="settings-section">
+  <div class="section-card" id="sec-nuclei">
+    <div class="section-header" onclick="toggleSection('sec-nuclei')">
+      <h3><i class="bi bi-bug"></i> Nuclei (Vulnerability Scanning)</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nuclei-auto">Auto-run in Daemon</label>
+          <button class="help-btn" data-help="nuclei_auto">?</button>
+        </div>
+        <label class="toggle-switch">
+          <input type="checkbox" id="cfg-nuclei-auto">
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nuclei-min-targets">Min Targets Before Run</label>
+          <button class="help-btn" data-help="nuclei_min_targets">?</button>
+        </div>
+        <input type="number" id="cfg-nuclei-min-targets" class="form-control" min="1" max="10000" value="50" style="width:120px">
+        <p class="field-hint" style="font-size:.72rem;color:var(--text-muted);margin-top:.2rem">Won't fire nuclei until this many hosts with web ports are discovered</p>
+        <div class="field-error">Must be between 1 and 10000</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label>Severity Filter</label>
+          <button class="help-btn" data-help="nuclei_severity">?</button>
+        </div>
+        <div class="chip-group" id="severityChips">
+          <span class="chip sev-critical active" data-val="critical">Critical</span>
+          <span class="chip sev-high active" data-val="high">High</span>
+          <span class="chip sev-medium active" data-val="medium">Medium</span>
+          <span class="chip sev-low" data-val="low">Low</span>
+          <span class="chip sev-info" data-val="info">Info</span>
+        </div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nuclei-rate">Rate Limit (req/s)</label>
+          <button class="help-btn" data-help="nuclei_rate">?</button>
+        </div>
+        <input type="number" id="cfg-nuclei-rate" class="form-control" min="1" max="1000" value="10" style="width:120px">
+        <div class="field-error">Must be between 1 and 1000</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nuclei-concurrency">Concurrency</label>
+          <button class="help-btn" data-help="nuclei_concurrency">?</button>
+        </div>
+        <input type="number" id="cfg-nuclei-concurrency" class="form-control" min="1" max="50" value="2" style="width:120px">
+        <div class="field-error">Must be between 1 and 50</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label">
+          <label for="cfg-nuclei-interval">Run Interval (hours)</label>
+          <button class="help-btn" data-help="nuclei_interval">?</button>
+        </div>
+        <input type="number" id="cfg-nuclei-interval" class="form-control" min="1" max="168" value="6" style="width:120px">
+        <div class="field-error">Must be between 1 and 168 hours</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Scheduling -->
+<div class="settings-section">
+  <div class="section-card" id="sec-scheduling">
+    <div class="section-header" onclick="toggleSection('sec-scheduling')">
+      <h3><i class="bi bi-clock-history"></i> Scheduling</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-disc-interval">Discovery Interval (hours)</label><button class="help-btn" data-help="disc_interval">?</button></div>
+        <input type="number" id="cfg-disc-interval" class="form-control" min="1" max="168" value="4" style="width:120px">
+      </div>
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-scan-interval">Scan Interval (hours)</label><button class="help-btn" data-help="scan_interval">?</button></div>
+        <input type="number" id="cfg-scan-interval" class="form-control" min="1" max="168" value="2" style="width:120px">
+      </div>
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-enum-interval">Service Enum Interval (hours)</label><button class="help-btn" data-help="enum_interval">?</button></div>
+        <input type="number" id="cfg-enum-interval" class="form-control" min="1" max="168" value="8" style="width:120px">
+      </div>
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-tls-interval">TLS Inspection Interval (hours)</label><button class="help-btn" data-help="tls_interval">?</button></div>
+        <input type="number" id="cfg-tls-interval" class="form-control" min="1" max="168" value="12" style="width:120px">
+      </div>
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-os-interval">OS Fingerprint Interval (hours)</label><button class="help-btn" data-help="os_interval">?</button></div>
+        <input type="number" id="cfg-os-interval" class="form-control" min="1" max="168" value="12" style="width:120px">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Section: Dashboard -->
+<div class="settings-section">
+  <div class="section-card" id="sec-dashboard">
+    <div class="section-header" onclick="toggleSection('sec-dashboard')">
+      <h3><i class="bi bi-display"></i> Dashboard</h3>
+      <i class="bi bi-chevron-down section-chevron"></i>
+    </div>
+    <div class="section-body">
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-dash-host">Bind Host</label><button class="help-btn" data-help="dash_host">?</button></div>
+        <input type="text" id="cfg-dash-host" class="form-control" value="127.0.0.1" style="width:200px">
+        <div class="field-error">Invalid IP address or hostname</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-dash-port">Port</label><button class="help-btn" data-help="dash_port">?</button></div>
+        <input type="number" id="cfg-dash-port" class="form-control" min="1" max="65535" value="5000" style="width:120px">
+        <div class="field-error">Must be between 1 and 65535</div>
+      </div>
+      <div class="field-group">
+        <div class="field-label"><label for="cfg-refresh-interval">Auto-Refresh Interval (seconds)</label><button class="help-btn" data-help="refresh_interval">?</button></div>
+        <input type="number" id="cfg-refresh-interval" class="form-control" min="5" max="300" value="15" style="width:120px">
+        <div class="field-error">Must be between 5 and 300 seconds</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Save Bar -->
+<div class="save-bar hidden" id="saveBar">
+  <div class="changes-count"><strong id="changeCount">0</strong> unsaved changes</div>
+  <div class="save-actions">
+    <button class="btn btn-outline" id="btnReset" onclick="resetSettings()"><i class="bi bi-arrow-counterclockwise"></i> Reset</button>
+    <button class="btn btn-primary" id="btnSave" onclick="saveSettings()"><i class="bi bi-check-lg"></i> Save Configuration</button>
+  </div>
+</div>
+
+<!-- Help Popover (created dynamically) -->
+<div class="help-popover" id="helpPopover" style="display:none"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+'use strict';
+
+// ========== HELP DATA ==========
+var HELP = {
+  target_ranges: {title:'Target Ranges', desc:'IP ranges to scan (IPv4 only). Supports CIDR notation for subnets. Use one range per line or comma-separated.', default:'10.0.0.0/8, 192.168.0.0/16, 172.16.0.0/12', recommended:'Start with your local subnet (/24) and expand gradually', impact:'Larger ranges = longer scan cycles. A /8 has 16M addresses.'},
+  discovery_techniques: {title:'Discovery Techniques', desc:'Select which host discovery methods to use. Nmap runs first (fastest), then active techniques, then passive. More techniques = better coverage but slower cycles.', default:'All except arp_sweep and dns_custom', recommended:'Enable nmap_discover + passive methods for stealth; add active ones for thoroughness', impact:'Each technique adds discovery time. Passive methods add zero network noise.'},
+  nmap_timing: {title:'Nmap Timing Template', desc:'Controls nmap\'s probe timing aggressiveness. Lower = stealthier but slower. T2 is the default balance between speed and stealth.', default:'T2', recommended:'T2 for stealth networks, T3-T4 for internal labs, T0-T1 for SOC-monitored targets', impact:'T4/T5 will trigger most IDS systems. T0 takes ~5 min between probes.'},
+  nmap_chunks: {title:'Parallel Nmap Chunks', desc:'Number of simultaneous nmap processes for host discovery. Higher = faster discovery of large subnets but more network noise.', default:'1', recommended:'1 for small LANs, 4-8 for enterprise (200k+ hosts)', impact:'Each chunk runs a separate nmap process. More chunks = more simultaneous traffic.'},
+  min_delay: {title:'Min Delay', desc:'Minimum seconds to wait between scan probes. This is the floor for the randomized delay. Higher values = stealthier but slower scans.', default:'10.0s', recommended:'30+ for SOC-monitored nets, 0.5-2 for internal labs, 10 for general use', impact:'At 10s with 1000 hosts, a full pass takes ~2.7 hours minimum.'},
+  max_delay: {title:'Max Delay', desc:'Maximum seconds between probes. The actual delay is randomized between min_delay and max_delay. Wider range = more unpredictable timing pattern.', default:'45.0s', recommended:'2-3x your min_delay for good randomization', impact:'Wider spread makes traffic pattern harder to fingerprint.'},
+  jitter_factor: {title:'Jitter Factor', desc:'Additional timing randomization applied on top of the base delay. 0 = no jitter (predictable), 1.0 = up to 100% additional random delay.', default:'0.3', recommended:'0.2-0.4 for most scenarios, 0.6+ for paranoid stealth', impact:'Higher jitter makes scan timing less predictable to IDS correlation engines.'},
+  max_threads: {title:'Max Threads', desc:'Maximum concurrent scan threads. More threads = faster scanning but more simultaneous connections visible on the network.', default:'3', recommended:'3 for stealth, 8-15 for enterprise, 1 for paranoid mode', impact:'Each thread maintains its own connection. 15 threads = 15 simultaneous probes.'},
+  scan_window: {title:'Scan Window', desc:'Restrict scanning to business hours only. Traffic during work hours blends with normal activity and is less likely to trigger alerts.', default:'Disabled', recommended:'Enable on SOC-monitored networks (8AM-6PM)', impact:'Scanning only happens during the window. Outside hours, the daemon sleeps.'},
+  decoy_ips: {title:'Decoy IPs', desc:'Fake source IPs included in scan packets to confuse defenders. The real scanner IP is mixed in with decoys. Only works with SYN scan mode.', default:'10.0.0.1, 10.0.0.254, 172.16.0.1', recommended:'Use IPs that exist on your network segment for realism', impact:'Makes it harder to identify the real scanner. Requires SYN scan type.'},
+  scan_type: {title:'Scan Type', desc:'TCP Connect completes the full 3-way handshake (works without root, logged by target). SYN scan sends only SYN packets (requires root, stealthier, not logged by most services).', default:'connect', recommended:'connect for non-root and reliability, syn for stealth with root access', impact:'SYN is faster and stealthier but requires root/admin privileges.'},
+  scanner_mode: {title:'Scanner Mode', desc:'Controls how port scanning is performed. "Nmap Only" uses traditional nmap connect/SYN scanning with stealth timing — safest for monitored networks. "Two-Phase" uses naabu for fast initial port discovery then nmap for version detection — extremely fast but VERY NOISY.', default:'nmap_only', recommended:'Use "Nmap Only" on SOC-monitored networks. Use "Two-Phase" for fast results on authorized internal tests with 200k+ hosts.', impact:'naabu generates massive traffic bursts (thousands of packets/second) that ANY IDS will detect immediately. It is not stealth-capable.'},
+  naabu_rate: {title:'naabu Rate', desc:'Packets per second for port discovery. Higher = faster but more network load.', default:'5000', recommended:'5000 for most networks, 10000+ for enterprise scale', impact:'Higher rates complete faster but generate more traffic.'},
+  naabu_threads: {title:'naabu Threads', desc:'Concurrent scanning threads.', default:'50', recommended:'50 for most, 100+ for enterprise', impact:'More threads = faster but more CPU/memory usage.'},
+  port_profile: {title:'Port Profile', desc:'Predefined port lists to scan. Quick (5 ports) is fast but may miss services. Standard (19 ports) covers common services. Full scans all 65535 ports.', default:'standard (19 ports)', recommended:'standard for daily use, quick for 200k+ hosts, full for targeted assessment', impact:'Full scan of 1000 hosts with stealth delays can take days.'},
+  udp_scan: {title:'UDP Scan', desc:'Enable UDP port scanning for DNS (53), SNMP (161), NTP (123), SSDP (1900), mDNS (5353). UDP scanning is slower and less reliable than TCP.', default:'Enabled', recommended:'Enable unless scanning 200k+ hosts (too slow at scale)', impact:'UDP probes are slow due to lack of connection feedback. Adds significant time.'},
+  banner_grab: {title:'Banner Grab', desc:'After finding an open port, attempt to read the service banner. Reveals software versions for vulnerability matching.', default:'Enabled', recommended:'Always enable — critical for vulnerability correlation', impact:'Adds a small delay per open port but provides essential version intel.'},
+  connect_timeout: {title:'Connect Timeout', desc:'Seconds to wait for a TCP connection to establish before marking the port as filtered/closed.', default:'2.0s', recommended:'2s for local networks, 5s for WAN/VPN targets, 1s for fast labs', impact:'Lower = faster scans but may miss slow-responding hosts.'},
+  version_intensity: {title:'Version Intensity', desc:'How aggressively nmap probes for service versions (0-9). Higher = more probes sent = better identification but noisier. Level 5 is balanced.', default:'5', recommended:'3-5 for stealth, 7-9 for thorough assessment', impact:'Each level adds more probe types. Level 9 sends all known probes.'},
+  service_timing: {title:'Service Scan Timing', desc:'Timing template for nmap -sV service detection. Same as discovery timing but applied to version probes.', default:'T2', recommended:'Same as your nmap timing template', impact:'Aggressive timing may miss banners on slow services.'},
+  service_parallel: {title:'Parallel Processes', desc:'Number of concurrent nmap -sV processes for service detection. Each process handles one host at a time.', default:'4', recommended:'4 for normal use, 1 for maximum stealth, 8+ for enterprise', impact:'More processes = faster service detection but more network activity.'},
+  anomaly_threshold: {title:'Anomaly Threshold', desc:'Score above which a finding is flagged as anomalous. Lower = more sensitive (more alerts, more false positives). Higher = fewer alerts, may miss subtle changes.', default:'0.65', recommended:'0.5-0.7 depending on noise tolerance. Start high, lower as model trains.', impact:'At 0.5 you will see many alerts initially. At 0.9 only extreme outliers trigger.'},
+  min_samples: {title:'Min Training Samples', desc:'Minimum data points needed before the ML model activates. Below this threshold, only rule-based detection runs.', default:'50', recommended:'50 for small nets, 100-200 for noisy enterprise environments', impact:'More samples = better model but longer cold-start period.'},
+  training_interval: {title:'Training Interval', desc:'Hours between ML model retraining cycles. The model incorporates new scan data and operator feedback on each retrain.', default:'24 hours', recommended:'12-24h for active environments, 48-168h for stable networks', impact:'Frequent retraining adapts faster but uses more CPU.'},
+  nuclei_auto: {title:'Auto-run Nuclei', desc:'Run vulnerability scanning automatically in daemon mode. WARNING: Nuclei sends active exploit probes that may trigger IDS/WAF alerts.', default:'Disabled', recommended:'Disable for stealth operations. Enable only for sanctioned assessments.', impact:'Nuclei probes are noisy and may be detected by security tools.'},
+  nuclei_min_targets: {title:'Min Targets Before Run', desc:'Minimum number of hosts with web ports (80, 443, 8080, etc.) that must be discovered before nuclei auto-fires. Prevents wasting a nuclei run on just 2-3 hosts early in discovery. On large networks (200k+), discovery takes multiple cycles — this ensures nuclei waits until meaningful coverage exists.', default:'50', recommended:'50 for enterprise, 10 for small networks, 200 for very large networks where you want deeper coverage first', impact:'Higher = nuclei waits longer but scans more targets per run (more efficient). Lower = earlier results but may re-run frequently as new targets appear.'},
+  nuclei_severity: {title:'Severity Filter', desc:'Only run nuclei templates matching selected severities. Critical/High focus on exploitable issues. Medium catches misconfigurations. Low/Info are mostly informational.', default:'critical, high, medium', recommended:'critical + high for stealth, add medium for thorough assessment', impact:'More severities = more templates run = more time and network traffic.'},
+  nuclei_rate: {title:'Rate Limit', desc:'Maximum HTTP requests per second to targets during nuclei scanning. Lower = stealthier but slower.', default:'10', recommended:'5-10 for stealth, 50-100 for fast authorized scans', impact:'High rates may DoS weak services or trigger WAF blocks.'},
+  nuclei_concurrency: {title:'Concurrency', desc:'Number of simultaneous nuclei template executions. Higher = faster but more network connections.', default:'2', recommended:'2-5 for stealth, 10-25 for authorized testing', impact:'Each concurrent template maintains its own connections to targets.'},
+  nuclei_interval: {title:'Run Interval', desc:'Hours between automatic nuclei runs (if auto-run is enabled). Nuclei only runs against targets flagged by the ML engine.', default:'6 hours', recommended:'6-12 hours for active hunting, 24-48 for maintenance mode', impact:'Frequent runs keep vulnerability data fresh but increase noise.'},
+  disc_interval: {title:'Discovery Interval', desc:'Hours between full discovery cycles. Each cycle runs all enabled discovery techniques to find new hosts.', default:'4 hours', recommended:'2-4h for dynamic environments, 8-12h for stable networks', impact:'Shorter intervals catch new hosts faster but increase background traffic.'},
+  scan_interval: {title:'Scan Interval', desc:'Hours between TCP port scan cycles on all discovered hosts.', default:'2 hours', recommended:'2h for active monitoring, 4-8h for enterprise scale', impact:'Must be long enough for a full scan to complete with stealth delays.'},
+  enum_interval: {title:'Service Enum Interval', desc:'Hours between service enumeration cycles (SMB, LDAP, Redis, Docker, ES checks).', default:'8 hours', recommended:'8-12h for most environments', impact:'Service enumeration creates authenticated connections to services.'},
+  tls_interval: {title:'TLS Inspection Interval', desc:'Hours between TLS/SSL certificate inspection cycles. Checks for expired certs, weak ciphers, misconfigurations.', default:'12 hours', recommended:'12-24h is sufficient — certificates rarely change frequently', impact:'TLS inspection connects to every HTTPS port found.'},
+  os_interval: {title:'OS Fingerprint Interval', desc:'Hours between OS fingerprinting cycles. Uses passive (banner analysis) and optionally active (TCP stack probing) techniques.', default:'12 hours', recommended:'12-24h — OS rarely changes on hosts', impact:'Active OS fingerprinting sends distinctive probe packets.'},
+  dash_host: {title:'Bind Host', desc:'IP address the dashboard web server binds to. Use 127.0.0.1 for localhost-only access (stealth). Use 0.0.0.0 to allow remote access.', default:'127.0.0.1', recommended:'127.0.0.1 for stealth ops, 0.0.0.0 only behind VPN/firewall', impact:'Binding to 0.0.0.0 exposes the dashboard to the network.'},
+  dash_port: {title:'Dashboard Port', desc:'TCP port for the web dashboard. Default 5000. Change if port conflicts exist.', default:'5000', recommended:'5000 or any available high port', impact:'Changing requires restarting the dashboard service.'},
+  refresh_interval: {title:'Auto-Refresh Interval', desc:'Seconds between automatic dashboard data refreshes (stat cards, scan status).', default:'15', recommended:'15s for active monitoring, 30-60s to reduce server load', impact:'Shorter intervals = more API calls but fresher data.'}
+};
+
+// ========== PROFILES ==========
+var PROFILES = {
+  basic: {
+    target_ranges: '192.168.1.0/24',
+    techniques: ['nmap_discover','passive_sniff','dhcp_passive'],
+    nmap_timing: 'T1', nmap_chunks: 1,
+    scanner_mode: 'nmap_only',
+    min_delay: 30, max_delay: 90, jitter: 0.5, max_threads: 1,
+    scan_window: true, window_start: '09:00', window_end: '17:00',
+    scan_type: 'connect', port_profile: 'quick', udp_scan: false, banner_grab: true, connect_timeout: 3,
+    version_intensity: 3, service_timing: 'T1', service_parallel: 1,
+    anomaly_threshold: 0.7, min_samples: 50, training_interval: 48,
+    nuclei_auto: false, nuclei_severity: ['critical','high'], nuclei_rate: 5, nuclei_concurrency: 1, nuclei_interval: 24,
+    disc_interval: 8, scan_interval: 6, enum_interval: 12, tls_interval: 24, os_interval: 24,
+    dash_host: '127.0.0.1', dash_port: 5000, refresh_interval: 30
+  },
+  sme: {
+    target_ranges: '10.0.0.0/16\n192.168.0.0/16',
+    techniques: ['nmap_discover','nbns_query','mdns_enum','ssdp_discover','tcp_syn_discover','snmp_sweep','dns_reverse_walk','passive_sniff','dhcp_passive'],
+    nmap_timing: 'T2', nmap_chunks: 2,
+    scanner_mode: 'nmap_only',
+    min_delay: 10, max_delay: 45, jitter: 0.3, max_threads: 3,
+    scan_window: false, window_start: '08:00', window_end: '18:00',
+    scan_type: 'connect', port_profile: 'standard', udp_scan: true, banner_grab: true, connect_timeout: 2,
+    version_intensity: 5, service_timing: 'T2', service_parallel: 4,
+    anomaly_threshold: 0.65, min_samples: 50, training_interval: 24,
+    nuclei_auto: false, nuclei_severity: ['critical','high','medium'], nuclei_rate: 10, nuclei_concurrency: 2, nuclei_interval: 6,
+    disc_interval: 4, scan_interval: 2, enum_interval: 8, tls_interval: 12, os_interval: 12,
+    dash_host: '127.0.0.1', dash_port: 5000, refresh_interval: 15
+  },
+  enterprise: {
+    target_ranges: '10.0.0.0/8\n172.16.0.0/12\n192.168.0.0/16',
+    techniques: ['nmap_discover','nbns_query','mdns_enum','ssdp_discover','passive_sniff','dhcp_passive'],
+    nmap_timing: 'T3', nmap_chunks: 8,
+    scanner_mode: 'two_phase',
+    min_delay: 0.5, max_delay: 3, jitter: 0.2, max_threads: 15,
+    scan_window: false, window_start: '08:00', window_end: '18:00',
+    scan_type: 'connect', port_profile: 'quick', udp_scan: false, banner_grab: true, connect_timeout: 1.5,
+    version_intensity: 5, service_timing: 'T3', service_parallel: 8,
+    anomaly_threshold: 0.6, min_samples: 200, training_interval: 12,
+    nuclei_auto: false, nuclei_severity: ['critical','high','medium'], nuclei_rate: 50, nuclei_concurrency: 10, nuclei_interval: 12,
+    disc_interval: 8, scan_interval: 4, enum_interval: 12, tls_interval: 24, os_interval: 24,
+    dash_host: '127.0.0.1', dash_port: 5000, refresh_interval: 15
+  }
+};
+
+// ========== STATE ==========
+var originalConfig = {};
+var currentConfig = {};
+var changeCount = 0;
+
+// ========== INIT ==========
+document.addEventListener('DOMContentLoaded', function() {
+  loadSettings();
+  bindEvents();
+});
+
+function loadSettings() {
+  fetch('/api/settings')
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var cfg = data.config || data;
+      originalConfig = JSON.parse(JSON.stringify(cfg));
+      applyConfig(cfg);
+      detectProfile(cfg);
+    })
+    .catch(function() {
+      showToast('Failed to load settings', 'error');
+    });
+}
+
+function applyConfig(cfg) {
+  var s = cfg.hostvigil || cfg;
+  var stealth = s.stealth || {};
+  var discovery = s.discovery || {};
+  var scanner = s.scanner || {};
+  var svc = s.service_scan || {};
+  var ml = s.ml_engine || {};
+  var nuclei = s.nuclei || {};
+  var scheduler = s.scheduler || {};
+  var dash = s.dashboard || {};
+
+  // Targets
+  var ranges = (discovery.target_ranges || []);
+  document.getElementById('cfg-target-ranges').value = Array.isArray(ranges) ? ranges.join('\n') : ranges;
+
+  // Discovery techniques
+  var techs = discovery.techniques || [];
+  document.querySelectorAll('#techniqueChecks input[type=checkbox]').forEach(function(cb) {
+    cb.checked = techs.indexOf(cb.value) !== -1;
+  });
+
+  // Nmap
+  setVal('cfg-nmap-timing', discovery.nmap_timing || 'T2');
+  setVal('cfg-nmap-chunks', discovery.nmap_parallel_chunks || 1);
+
+  // Stealth
+  setRange('cfg-min-delay', stealth.min_delay || 10, 'val-min-delay', 's', 1);
+  setRange('cfg-max-delay', stealth.max_delay || 45, 'val-max-delay', 's', 1);
+  setRange('cfg-jitter', stealth.jitter_factor || 0.3, 'val-jitter', '', 2);
+  setVal('cfg-max-threads', stealth.max_threads || 3);
+
+  var swEnabled = stealth.scan_window_enabled || false;
+  document.getElementById('cfg-scan-window').checked = swEnabled;
+  document.getElementById('scanWindowTimes').style.display = swEnabled ? 'flex' : 'none';
+  if (stealth.scan_window_start != null) document.getElementById('cfg-window-start').value = padTime(stealth.scan_window_start);
+  if (stealth.scan_window_end != null) document.getElementById('cfg-window-end').value = padTime(stealth.scan_window_end);
+
+  var decoys = stealth.decoy_ips || [];
+  document.getElementById('cfg-decoy-ips').value = Array.isArray(decoys) ? decoys.join(', ') : decoys;
+
+  // Scanner
+  var scannerMode = scanner.mode || 'nmap_only';
+  document.querySelectorAll('input[name="cfg-scanner-mode"]').forEach(function(r) { r.checked = r.value === scannerMode; });
+  toggleNaabuSettings(scannerMode);
+
+  var scanType = scanner.scan_type || 'connect';
+  document.querySelectorAll('input[name="cfg-scan-type"]').forEach(function(r) { r.checked = r.value === scanType; });
+  setVal('cfg-port-profile', scanner.port_profile || 'standard');
+  document.getElementById('cfg-udp-scan').checked = scanner.udp_scan_enabled !== false;
+  document.getElementById('cfg-banner-grab').checked = scanner.banner_grab !== false;
+  setVal('cfg-connect-timeout', scanner.connect_timeout || 2);
+
+  // naabu sub-settings
+  var nb = scanner.naabu || {};
+  setVal('cfg-naabu-rate', nb.rate || 5000);
+  setVal('cfg-naabu-threads', nb.threads || 50);
+
+  // Service
+  setRange('cfg-version-intensity', svc.version_intensity || 5, 'val-version-intensity', '', 0);
+  setVal('cfg-service-timing', svc.nmap_timing || 'T2');
+  setVal('cfg-service-parallel', svc.parallel || 4);
+
+  // ML
+  setRange('cfg-anomaly-threshold', ml.anomaly_threshold || 0.65, 'val-anomaly-threshold', '', 2);
+  setVal('cfg-min-samples', ml.min_training_samples || 50);
+  setVal('cfg-training-interval', ml.training_interval_hours || 24);
+
+  // Nuclei
+  document.getElementById('cfg-nuclei-auto').checked = nuclei.auto_run || false;
+  setVal('cfg-nuclei-min-targets', nuclei.min_targets || 50);
+  var sevFilter = nuclei.severity_filter || ['critical','high','medium'];
+  document.querySelectorAll('#severityChips .chip').forEach(function(chip) {
+    chip.classList.toggle('active', sevFilter.indexOf(chip.dataset.val) !== -1);
+  });
+  setVal('cfg-nuclei-rate', nuclei.rate_limit || 10);
+  setVal('cfg-nuclei-concurrency', nuclei.concurrency || 2);
+  setVal('cfg-nuclei-interval', nuclei.interval_hours || 6);
+
+  // Scheduling
+  setVal('cfg-disc-interval', scheduler.discovery_interval_hours || 4);
+  setVal('cfg-scan-interval', scheduler.scan_interval_hours || 2);
+  setVal('cfg-enum-interval', scheduler.service_enum_interval_hours || 8);
+  setVal('cfg-tls-interval', scheduler.tls_inspection_interval_hours || 12);
+  setVal('cfg-os-interval', scheduler.os_fingerprint_interval_hours || 12);
+
+  // Dashboard
+  setVal('cfg-dash-host', dash.host || '127.0.0.1');
+  setVal('cfg-dash-port', dash.port || 5000);
+  setVal('cfg-refresh-interval', dash.refresh_interval || 15);
+
+  currentConfig = JSON.parse(JSON.stringify(cfg));
+  updateChangeCount();
+}
+
+// ========== HELPERS ==========
+function setVal(id, val) {
+  var el = document.getElementById(id);
+  if (el) el.value = val;
+}
+
+function setRange(id, val, labelId, suffix, decimals) {
+  var el = document.getElementById(id);
+  if (el) el.value = val;
+  var lbl = document.getElementById(labelId);
+  if (lbl) lbl.textContent = parseFloat(val).toFixed(decimals) + suffix;
+}
+
+function padTime(h) {
+  var hour = parseInt(h);
+  return (hour < 10 ? '0' : '') + hour + ':00';
+}
+
+function toggleNaabuSettings(mode) {
+  var panel = document.getElementById('naabu-settings');
+  if (panel) {
+    panel.style.display = (mode === 'two_phase') ? 'block' : 'none';
+  }
+}
+
+function toggleSection(id) {
+  var card = document.getElementById(id);
+  if (card) card.classList.toggle('collapsed');
+}
+
+function detectProfile(cfg) {
+  var s = cfg.hostvigil || cfg;
+  var stealth = s.stealth || {};
+  var profileName = 'custom';
+  if (stealth.min_delay >= 25) profileName = 'basic';
+  else if (stealth.min_delay >= 5 && stealth.max_threads <= 5) profileName = 'sme';
+  else if (stealth.max_threads >= 10) profileName = 'enterprise';
+  highlightProfile(profileName);
+}
+
+function highlightProfile(name) {
+  document.querySelectorAll('.profile-card').forEach(function(c) {
+    c.classList.toggle('active', c.dataset.profile === name);
+  });
+}
+
+// ========== EVENT BINDING ==========
+function bindEvents() {
+  // Scanner mode radio → show/hide naabu settings
+  document.querySelectorAll('input[name="cfg-scanner-mode"]').forEach(function(r) {
+    r.addEventListener('change', function() {
+      toggleNaabuSettings(this.value);
+      trackChange();
+    });
+  });
+
+  // Profile cards
+  document.querySelectorAll('.profile-card').forEach(function(card) {
+    card.addEventListener('click', function() {
+      var p = this.dataset.profile;
+      if (p === 'custom') {
+        highlightProfile('custom');
+        return;
+      }
+      var profile = PROFILES[p];
+      if (!profile) return;
+      applyProfile(profile);
+      highlightProfile(p);
+    });
+  });
+
+  // Range sliders
+  bindRange('cfg-min-delay', 'val-min-delay', 's', 1);
+  bindRange('cfg-max-delay', 'val-max-delay', 's', 1);
+  bindRange('cfg-jitter', 'val-jitter', '', 2);
+  bindRange('cfg-version-intensity', 'val-version-intensity', '', 0);
+  bindRange('cfg-anomaly-threshold', 'val-anomaly-threshold', '', 2);
+
+  // Scan window toggle
+  document.getElementById('cfg-scan-window').addEventListener('change', function() {
+    document.getElementById('scanWindowTimes').style.display = this.checked ? 'flex' : 'none';
+    trackChange();
+  });
+
+  // Severity chips
+  document.querySelectorAll('#severityChips .chip').forEach(function(chip) {
+    chip.addEventListener('click', function() {
+      this.classList.toggle('active');
+      trackChange();
+    });
+  });
+
+  // Help buttons
+  document.querySelectorAll('.help-btn').forEach(function(btn) {
+    btn.addEventListener('click', function(e) {
+      e.stopPropagation();
+      showHelp(this, this.dataset.help);
+    });
+  });
+
+  // Close help on click outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.help-popover') && !e.target.closest('.help-btn')) {
+      hideHelp();
+    }
+  });
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') hideHelp();
+  });
+
+  // Track all input changes
+  document.querySelectorAll('input, textarea, select').forEach(function(el) {
+    var evType = (el.type === 'checkbox' || el.type === 'radio') ? 'change' : 'input';
+    el.addEventListener(evType, function() { trackChange(); });
+  });
+}
+
+function bindRange(id, labelId, suffix, decimals) {
+  var el = document.getElementById(id);
+  if (!el) return;
+  el.addEventListener('input', function() {
+    document.getElementById(labelId).textContent = parseFloat(this.value).toFixed(decimals) + suffix;
+    trackChange();
+  });
+}
+
+// ========== PROFILE APPLICATION ==========
+function applyProfile(p) {
+  document.getElementById('cfg-target-ranges').value = p.target_ranges || '';
+
+  document.querySelectorAll('#techniqueChecks input[type=checkbox]').forEach(function(cb) {
+    cb.checked = (p.techniques || []).indexOf(cb.value) !== -1;
+  });
+
+  setVal('cfg-nmap-timing', p.nmap_timing);
+  setVal('cfg-nmap-chunks', p.nmap_chunks);
+
+  setRangeAndLabel('cfg-min-delay', p.min_delay, 'val-min-delay', 's', 1);
+  setRangeAndLabel('cfg-max-delay', p.max_delay, 'val-max-delay', 's', 1);
+  setRangeAndLabel('cfg-jitter', p.jitter, 'val-jitter', '', 2);
+  setVal('cfg-max-threads', p.max_threads);
+
+  document.getElementById('cfg-scan-window').checked = p.scan_window;
+  document.getElementById('scanWindowTimes').style.display = p.scan_window ? 'flex' : 'none';
+  if (p.window_start) document.getElementById('cfg-window-start').value = p.window_start;
+  if (p.window_end) document.getElementById('cfg-window-end').value = p.window_end;
+
+  document.querySelectorAll('input[name="cfg-scan-type"]').forEach(function(r) { r.checked = r.value === p.scan_type; });
+  // Scanner mode (nmap_only / two_phase)
+  var sMode = p.scanner_mode || 'nmap_only';
+  document.querySelectorAll('input[name="cfg-scanner-mode"]').forEach(function(r) { r.checked = r.value === sMode; });
+  toggleNaabuSettings(sMode);
+  setVal('cfg-port-profile', p.port_profile);
+  document.getElementById('cfg-udp-scan').checked = !!p.udp_scan;
+  document.getElementById('cfg-banner-grab').checked = p.banner_grab !== false;
+  setVal('cfg-connect-timeout', p.connect_timeout);
+
+  setRangeAndLabel('cfg-version-intensity', p.version_intensity, 'val-version-intensity', '', 0);
+  setVal('cfg-service-timing', p.service_timing);
+  setVal('cfg-service-parallel', p.service_parallel);
+
+  setRangeAndLabel('cfg-anomaly-threshold', p.anomaly_threshold, 'val-anomaly-threshold', '', 2);
+  setVal('cfg-min-samples', p.min_samples);
+  setVal('cfg-training-interval', p.training_interval);
+
+  document.getElementById('cfg-nuclei-auto').checked = !!p.nuclei_auto;
+  document.querySelectorAll('#severityChips .chip').forEach(function(chip) {
+    chip.classList.toggle('active', (p.nuclei_severity || []).indexOf(chip.dataset.val) !== -1);
+  });
+  setVal('cfg-nuclei-rate', p.nuclei_rate);
+  setVal('cfg-nuclei-concurrency', p.nuclei_concurrency);
+  setVal('cfg-nuclei-interval', p.nuclei_interval);
+
+  setVal('cfg-disc-interval', p.disc_interval);
+  setVal('cfg-scan-interval', p.scan_interval);
+  setVal('cfg-enum-interval', p.enum_interval);
+  setVal('cfg-tls-interval', p.tls_interval);
+  setVal('cfg-os-interval', p.os_interval);
+
+  setVal('cfg-dash-host', p.dash_host);
+  setVal('cfg-dash-port', p.dash_port);
+  setVal('cfg-refresh-interval', p.refresh_interval);
+
+  trackChange();
+}
+
+function setRangeAndLabel(id, val, labelId, suffix, decimals) {
+  var el = document.getElementById(id);
+  if (el) el.value = val;
+  var lbl = document.getElementById(labelId);
+  if (lbl) lbl.textContent = parseFloat(val).toFixed(decimals) + suffix;
+}
+
+// ========== CHANGE TRACKING ==========
+function trackChange() {
+  var cur = gatherConfig();
+  var orig = JSON.stringify(originalConfig);
+  var now = JSON.stringify(cur);
+  changeCount = countDiffs(originalConfig, cur);
+  updateChangeCount();
+}
+
+function countDiffs(a, b) {
+  var count = 0;
+  var aStr = JSON.stringify(a);
+  var bStr = JSON.stringify(b);
+  if (aStr !== bStr) {
+    // rough count based on top-level key differences
+    var aFlat = flattenObj(a);
+    var bFlat = flattenObj(b);
+    var allKeys = Object.keys(Object.assign({}, aFlat, bFlat));
+    allKeys.forEach(function(k) {
+      if (JSON.stringify(aFlat[k]) !== JSON.stringify(bFlat[k])) count++;
+    });
+  }
+  return count;
+}
+
+function flattenObj(obj, prefix, res) {
+  res = res || {};
+  prefix = prefix || '';
+  for (var k in obj) {
+    if (!obj.hasOwnProperty(k)) continue;
+    var key = prefix ? prefix + '.' + k : k;
+    if (typeof obj[k] === 'object' && obj[k] !== null && !Array.isArray(obj[k])) {
+      flattenObj(obj[k], key, res);
+    } else {
+      res[key] = obj[k];
+    }
+  }
+  return res;
+}
+
+function updateChangeCount() {
+  var bar = document.getElementById('saveBar');
+  var countEl = document.getElementById('changeCount');
+  if (changeCount > 0) {
+    bar.classList.remove('hidden');
+    countEl.textContent = changeCount;
+  } else {
+    bar.classList.add('hidden');
+  }
+}
+
+// ========== GATHER CONFIG ==========
+function gatherConfig() {
+  var techniques = [];
+  document.querySelectorAll('#techniqueChecks input:checked').forEach(function(cb) {
+    techniques.push(cb.value);
+  });
+
+  var ranges = document.getElementById('cfg-target-ranges').value.trim();
+  var rangeList = ranges.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+
+  var sevFilter = [];
+  document.querySelectorAll('#severityChips .chip.active').forEach(function(c) {
+    sevFilter.push(c.dataset.val);
+  });
+
+  var decoyStr = document.getElementById('cfg-decoy-ips').value.trim();
+  var decoys = decoyStr ? decoyStr.split(/[,\n]+/).map(function(s){ return s.trim(); }).filter(Boolean) : [];
+
+  var scanType = 'connect';
+  document.querySelectorAll('input[name="cfg-scan-type"]').forEach(function(r) { if (r.checked) scanType = r.value; });
+
+  var scannerMode = 'nmap_only';
+  document.querySelectorAll('input[name="cfg-scanner-mode"]').forEach(function(r) { if (r.checked) scannerMode = r.value; });
+
+  return {
+    hostvigil: {
+      stealth: {
+        min_delay: parseFloat(document.getElementById('cfg-min-delay').value),
+        max_delay: parseFloat(document.getElementById('cfg-max-delay').value),
+        jitter_factor: parseFloat(document.getElementById('cfg-jitter').value),
+        max_threads: parseInt(document.getElementById('cfg-max-threads').value),
+        scan_window_enabled: document.getElementById('cfg-scan-window').checked,
+        scan_window_start: parseInt(document.getElementById('cfg-window-start').value.split(':')[0]),
+        scan_window_end: parseInt(document.getElementById('cfg-window-end').value.split(':')[0]),
+        decoy_ips: decoys
+      },
+      discovery: {
+        target_ranges: rangeList,
+        techniques: techniques,
+        nmap_timing: document.getElementById('cfg-nmap-timing').value,
+        nmap_parallel_chunks: parseInt(document.getElementById('cfg-nmap-chunks').value)
+      },
+      scanner: {
+        mode: scannerMode,
+        scan_type: scanType,
+        port_profile: document.getElementById('cfg-port-profile').value,
+        udp_scan_enabled: document.getElementById('cfg-udp-scan').checked,
+        banner_grab: document.getElementById('cfg-banner-grab').checked,
+        connect_timeout: parseFloat(document.getElementById('cfg-connect-timeout').value),
+        naabu: {
+          rate: parseInt(document.getElementById('cfg-naabu-rate').value) || 5000,
+          threads: parseInt(document.getElementById('cfg-naabu-threads').value) || 50
+        }
+      },
+      service_scan: {
+        version_intensity: parseInt(document.getElementById('cfg-version-intensity').value),
+        nmap_timing: document.getElementById('cfg-service-timing').value,
+        parallel: parseInt(document.getElementById('cfg-service-parallel').value)
+      },
+      ml_engine: {
+        anomaly_threshold: parseFloat(document.getElementById('cfg-anomaly-threshold').value),
+        min_training_samples: parseInt(document.getElementById('cfg-min-samples').value),
+        training_interval_hours: parseInt(document.getElementById('cfg-training-interval').value)
+      },
+      nuclei: {
+        auto_run: document.getElementById('cfg-nuclei-auto').checked,
+        min_targets: parseInt(document.getElementById('cfg-nuclei-min-targets').value) || 50,
+        severity_filter: sevFilter,
+        rate_limit: parseInt(document.getElementById('cfg-nuclei-rate').value),
+        concurrency: parseInt(document.getElementById('cfg-nuclei-concurrency').value),
+        interval_hours: parseInt(document.getElementById('cfg-nuclei-interval').value)
+      },
+      scheduler: {
+        discovery_interval_hours: parseInt(document.getElementById('cfg-disc-interval').value),
+        scan_interval_hours: parseInt(document.getElementById('cfg-scan-interval').value),
+        service_enum_interval_hours: parseInt(document.getElementById('cfg-enum-interval').value),
+        tls_inspection_interval_hours: parseInt(document.getElementById('cfg-tls-interval').value),
+        os_fingerprint_interval_hours: parseInt(document.getElementById('cfg-os-interval').value)
+      },
+      dashboard: {
+        host: document.getElementById('cfg-dash-host').value.trim(),
+        port: parseInt(document.getElementById('cfg-dash-port').value),
+        refresh_interval: parseInt(document.getElementById('cfg-refresh-interval').value)
+      }
+    }
+  };
+}
+
+// ========== VALIDATION ==========
+function validate() {
+  var valid = true;
+  // Clear all errors
+  document.querySelectorAll('.field-group.has-error').forEach(function(fg) { fg.classList.remove('has-error'); });
+
+  // Target ranges - basic CIDR check
+  var ranges = document.getElementById('cfg-target-ranges').value.trim();
+  if (ranges) {
+    var lines = ranges.split(/[\n,]+/).map(function(s) { return s.trim(); }).filter(Boolean);
+    var cidrRe = /^([0-9a-fA-F:.]+)(\/\d{1,3})?$/;
+    var allValid = lines.every(function(l) { return cidrRe.test(l); });
+    if (!allValid) { setError('cfg-target-ranges'); valid = false; }
+  }
+
+  // Numeric bounds
+  valid = checkBounds('cfg-nmap-chunks', 1, 16) && valid;
+  valid = checkBounds('cfg-max-threads', 1, 50) && valid;
+  valid = checkBounds('cfg-connect-timeout', 0.1, 10) && valid;
+  valid = checkBounds('cfg-service-parallel', 1, 16) && valid;
+  valid = checkBounds('cfg-min-samples', 10, 500) && valid;
+  valid = checkBounds('cfg-training-interval', 1, 168) && valid;
+  valid = checkBounds('cfg-nuclei-rate', 1, 1000) && valid;
+  valid = checkBounds('cfg-nuclei-concurrency', 1, 50) && valid;
+  valid = checkBounds('cfg-nuclei-interval', 1, 168) && valid;
+  valid = checkBounds('cfg-dash-port', 1, 65535) && valid;
+  valid = checkBounds('cfg-refresh-interval', 5, 300) && valid;
+
+  return valid;
+}
+
+function checkBounds(id, min, max) {
+  var el = document.getElementById(id);
+  if (!el) return true;
+  var val = parseFloat(el.value);
+  if (isNaN(val) || val < min || val > max) {
+    setError(id);
+    return false;
+  }
+  return true;
+}
+
+function setError(id) {
+  var el = document.getElementById(id);
+  if (el) {
+    var fg = el.closest('.field-group');
+    if (fg) fg.classList.add('has-error');
+  }
+}
+
+// ========== SAVE ==========
+function saveSettings() {
+  if (!validate()) {
+    showToast('Please fix validation errors before saving', 'warning');
+    return;
+  }
+
+  var config = gatherConfig();
+  var btn = document.getElementById('btnSave');
+  var origHtml = btn.innerHTML;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Saving...';
+
+  fetch('/api/settings', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({config: config})
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.error) {
+      showToast('Error: ' + data.error, 'error');
+    } else {
+      showToast('Configuration saved successfully', 'success');
+      originalConfig = JSON.parse(JSON.stringify(config));
+      changeCount = 0;
+      updateChangeCount();
+    }
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  })
+  .catch(function(err) {
+    showToast('Failed to save configuration', 'error');
+    btn.disabled = false;
+    btn.innerHTML = origHtml;
+  });
+}
+
+// ========== RESET ==========
+function resetSettings() {
+  applyConfig(originalConfig);
+  changeCount = 0;
+  updateChangeCount();
+  showToast('Settings reset to last saved values', 'info');
+}
+
+// ========== HELP POPOVER ==========
+function showHelp(btn, key) {
+  var data = HELP[key];
+  if (!data) return;
+
+  var popover = document.getElementById('helpPopover');
+  popover.innerHTML =
+    '<div class="help-title">' + escapeHtml(data.title) + '</div>' +
+    '<div>' + escapeHtml(data.desc) + '</div>' +
+    '<div class="help-meta">' +
+      '<span><i class="bi bi-dot"></i><strong>Default:</strong>&nbsp;' + escapeHtml(data.default) + '</span>' +
+      '<span><i class="bi bi-dot"></i><strong>Recommended:</strong>&nbsp;' + escapeHtml(data.recommended) + '</span>' +
+      '<span><i class="bi bi-dot"></i><strong>Impact:</strong>&nbsp;' + escapeHtml(data.impact) + '</span>' +
+    '</div>';
+
+  // Position near the button
+  var rect = btn.getBoundingClientRect();
+  var scrollY = window.scrollY || document.documentElement.scrollTop;
+  var scrollX = window.scrollX || document.documentElement.scrollLeft;
+
+  popover.style.display = 'block';
+
+  var popW = popover.offsetWidth;
+  var popH = popover.offsetHeight;
+  var vpW = window.innerWidth;
+
+  var left = rect.right + scrollX + 8;
+  var top = rect.top + scrollY - 8;
+
+  // If overflows right, show on left
+  if (left + popW > vpW - 16) {
+    left = rect.left + scrollX - popW - 8;
+  }
+  // If overflows left, center below
+  if (left < 8) {
+    left = rect.left + scrollX;
+    top = rect.bottom + scrollY + 8;
+  }
+  // If overflows bottom
+  if (top + popH > scrollY + window.innerHeight - 16) {
+    top = rect.top + scrollY - popH - 8;
+  }
+
+  popover.style.left = left + 'px';
+  popover.style.top = top + 'px';
+}
+
+function hideHelp() {
+  document.getElementById('helpPopover').style.display = 'none';
+}
+
+})();
+</script>
+{% endblock %}

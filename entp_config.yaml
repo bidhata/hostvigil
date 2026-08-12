@@ -1,0 +1,260 @@
+# ============================================================================
+# HostVigil Enterprise Configuration — 200,000+ Host Networks
+# ============================================================================
+#
+# This config is tuned for large enterprise environments (200k+ hosts).
+# Key differences from default config.yaml:
+#
+#   • Lower delays and higher thread counts for throughput at scale
+#   • Aggressive nmap settings (--min-rate 10000, 12 parallel chunks)
+#   • Slow/serial discovery techniques disabled (tcp_syn, snmp, dns_reverse_walk)
+#   • Quick port profile (5 ports) instead of standard (19 ports)
+#   • Two-phase scanning: naabu (fast) → Nmap (deep version detection)
+#   • Parallel discovery + scanning (scan hosts AS they're discovered)
+#   • UDP scanning disabled (unrealistic at this scale for daemon mode)
+#   • Longer scheduler intervals (give phases time to finish before repeating)
+#   • Passive-only OS fingerprinting (active probing 200k hosts = days)
+#   • Higher ML thresholds to reduce noise in large datasets
+#
+# Usage:
+#   python run.py -c entp_config.yaml daemon
+#
+# Stealth note:
+#   This config prioritizes SPEED over stealth. On SOC-monitored networks,
+#   use the "conservative" values in comments below, or stick with the
+#   default config.yaml with narrower target_ranges.
+#
+# ============================================================================
+
+hostvigil:
+  stealth:
+    min_delay: 0.5              # Default 10.0 — too slow for 200k hosts (23 days/pass)
+    max_delay: 2.0              # Default 45.0 — keep some randomization
+    max_threads: 15             # Default 3 — parallelism needed at scale
+    jitter_factor: 0.2          # Default 0.3 — less jitter, more throughput
+    packet_fragmentation: true
+    randomize_scan_order: true
+    ttl_manipulation: true
+    decoy_ips: ['10.0.0.1', '10.0.0.254', '172.16.0.1', '192.168.1.1', '100.64.0.1', '198.18.0.1']
+    rst_threshold: 10           # Default 3 — larger networks see more RSTs naturally
+    rst_window_seconds: 30      # Default 60
+    rst_backoff_multiplier: 2.0 # Default 3.0 — less aggressive backoff
+    scan_window_enabled: false
+    scan_window_start: 8
+    scan_window_end: 18
+    # --- Stealth decay scheduler (F6) ---
+    # Ramps inter-phase delays up as the daemon ages to avoid a constant cadence
+    # that a supervised network could fingerprint. OFF here (speed-first config);
+    # enable for long-running operations on SOC-monitored networks.
+    decay_enabled: false              # Set true to enable decay ramping
+    decay_ramp_hours: 24              # Full ramp reached after this many hours
+    decay_max_multiplier: 3.0         # Delays grow up to 3x their base over the ramp
+    # --- Conservative alternative (stealth on SOC-monitored networks) ---
+    # min_delay: 2.0
+    # max_delay: 8.0
+    # max_threads: 8
+    # jitter_factor: 0.3
+    # rst_threshold: 5
+    # decay_enabled: true
+
+  discovery:
+    techniques:
+      # === Fast / Scalable (keep these) ===
+      - nmap_discover           # Primary — nmap handles large ranges natively
+      - nbns_query              # Quick NetBIOS lookups (Windows hosts)
+      - mdns_enum               # Fast multicast (printers, IoT, macOS)
+      - ssdp_discover           # UPnP multicast (routers, NAS)
+      # === Disabled at scale (too slow for 200k+) ===
+      # - tcp_syn_discover      # Serial per-host — doesn't scale past 10k
+      # - arp_sweep             # Extremely slow on large subnets
+      # - snmp_sweep            # 45s delay × 200k = weeks
+      # - dns_reverse_walk      # PTR lookups on /8 = millions of queries
+      # === Passive (zero cost, always keep) ===
+      - passive_sniff           # Zero packets sent
+      - dhcp_passive            # Zero packets sent
+      # - dns_custom            # Enable if you have internal DNS (fast zone xfer)
+    target_ranges:
+      - '10.0.0.0/8'
+      - '100.64.0.0/10'
+      - '172.16.0.0/12'
+      - '192.0.0.0/24'
+      - '192.168.0.0/16'
+      - '198.18.0.0/15'
+    passive_sniff_duration: 300
+    dhcp_sniff_duration: 120
+    arp_batch_size: 16
+    arp_batch_delay: 5.0
+    snmp_communities: ['public', 'private']
+    snmp_delay: 45.0
+    # nmap host-discovery — tuned for speed at scale
+    nmap_timing: 'T4'                # T4 = fast; use T5 if stealth is irrelevant
+    nmap_host_timeout: ''
+    nmap_scan_timeout: 10800         # 3 hours — needed for 500k+ hosts across multiple /8 ranges
+    nmap_min_prefix: 8               # Allow /8 scanning
+    nmap_max_chunks: 2048            # Default 256 — raised for 500k+ hosts spanning multiple ranges
+    max_hosts: 200000           # Safety cap — stop discovery after this many live hosts found
+    nmap_extra_args: ['-PE', '-PS22,80,443,445,3389', '--min-rate', '10000', '--max-retries', '1', '-n']
+    # ↑ --min-rate 10000 (up from 5000) — critical for 200k+ host throughput
+    nmap_disable_arp_ping: false
+    nmap_parallel_chunks: 12         # Default 4 — 12 concurrent nmap processes for 500k scale
+    # --- Conservative alternative ---
+    # nmap_extra_args: ['-PE', '-PS22,80,443', '--min-rate', '3000', '--max-retries', '1', '-n']
+    # nmap_parallel_chunks: 4
+    # nmap_max_chunks: 512
+    # Custom DNS discovery
+    dns_custom_server: ''
+    dns_custom_domain: ''
+    dns_custom_timeout: 3.0
+
+  scanner:
+    ports:
+      quick: [22, 80, 443, 445, 3389]
+      standard: [22, 53, 80, 88, 135, 139, 389, 443, 445, 636, 1433, 3306, 3389, 5432, 5985, 5986, 8080, 8443, 9200]
+      full: [21, 22, 23, 25, 53, 80, 88, 110, 111, 135, 139, 143, 389, 443, 445, 465, 514, 587, 636, 993, 995, 1080, 1433, 1521, 2049, 2375, 2376, 3306, 3389, 5432, 5900, 5985, 5986, 6379, 8080, 8443, 8888, 9090, 9200, 9300, 11211, 27017]
+    udp_ports:
+      quick: [53, 123, 161, 500, 1900]
+      standard: [53, 67, 68, 69, 123, 137, 138, 161, 162, 500, 514, 520, 1194, 1900, 4500, 5353]
+    scan_type: 'connect'
+    mode: 'two_phase'                # naabu fast discovery → Nmap service detection
+    naabu:
+      rate: 10000                    # Higher rate for enterprise
+      threads: 100                   # More threads at scale
+    port_profile: 'quick'               # 5 ports — 200k × 5 = 1M probes, naabu handles in ~100s
+    udp_scan_enabled: false          # Disabled — UDP at 200k scale is unrealistic for daemon
+    udp_profile: 'quick'
+    timeout: 1.0                     # Default 1.5 — faster timeouts on dead ports
+    banner_grab: true
+    service_detection: true
+
+  os_fingerprint:
+    enabled: false                   # Disabled in daemon — 200k hosts × per-host delay = days
+    active_probing: false
+    min_delay: 0.0                   # Manual runs bypass per-host pause
+    max_delay: 0.1
+    confidence_threshold: 0.4
+
+  tls_inspection:
+    enabled: true
+    ports: [443, 636, 993, 995, 465, 8443, 5986, 2376, 9443]
+    check_expiry: true
+    check_weak_ciphers: true
+    check_protocol_versions: true
+    timeout: 3.0
+    min_delay: 0.0                   # Override stealth delays — 200k hosts can't serialize
+    max_delay: 0.1
+
+  service_enum:
+    enabled: true
+    smb_enum: true
+    ldap_enum: true
+    redis_check: true
+    elasticsearch_check: true
+    docker_check: true
+    winrm_check: true
+    timeout: 3.0
+    min_delay: 0.0                   # Override stealth delays at enterprise scale
+    max_delay: 0.1
+    # --- Silent credential audit (F5) ---
+    # Minimal single-packet probes for Redis/ES (no credential guessing) replace the
+    # deeper INFO/index-dump enumeration — smaller footprint AND faster at scale.
+    silent_credential_audit:
+      enabled: true                  # false → fall back to full Redis/ES enumeration
+
+  service_scan:
+    enabled: true
+    nmap_binary: 'nmap'
+    version_intensity: 5
+    nmap_timing: 'T3'                # T3 (up from T2) — faster at scale
+    scan_delay: ''
+    host_timeout: ''
+    parallel: 8                      # Default 4 — more concurrent nmap processes
+    max_hosts: 500                   # Cap per run — prevents runaway on 200k hosts
+    scan_timeout: 120                # Default 300 — lower timeout (dead hosts waste time)
+
+  ml_engine:
+    model_path: 'data/models/'
+    training_interval_hours: 24
+    anomaly_threshold: 0.75          # Default 0.7 — slightly higher to reduce noise at scale
+    min_training_samples: 200        # Default 50 — with 200k hosts, need more for good baselines
+    features:
+      - port_count_per_host
+      - new_service_detection
+      - port_change_rate
+      - unusual_port_combinations
+      - banner_change_detection
+      - time_pattern_deviation
+      - os_change_detection
+      - tls_weakness_score
+
+  nuclei:
+    binary_path: 'nuclei'
+    templates_path: ''
+    update_templates: false         # Stealth: don't phone home to GitHub before each scan
+    severity_filter: ['critical', 'high', 'medium', 'low', 'info']
+    rate_limit: 20                   # Default 10 — more throughput for large host pools
+    bulk_size: 10                    # Default 5
+    concurrency: 4                   # Default 2
+    timeout: 10                      # Default 15 — faster timeouts
+    retries: 1
+    auto_run: true
+    run_interval_hours: 12           # Default 6 — longer interval at scale
+
+  # --------------------------------------------------------------------------
+  # Parallel Discovery + Port Scanning
+  # --------------------------------------------------------------------------
+  # CRITICAL for enterprise: Without this, discovery takes 12+ hours and
+  # port scanning doesn't start until discovery finishes completely.
+  # With parallel mode, naabu fires on batches of 100 hosts AS they are
+  # discovered — you get port scan results within minutes of daemon start.
+  parallel_scan:
+    enabled: true                    # Default false — enable for enterprise
+    batch_size: 100                  # Fire naabu every 100 newly-discovered hosts
+    scan_interval_sec: 20           # Check for new hosts every 20s (faster at scale)
+    max_scan_threads: 2              # Concurrent naabu batches
+    # --- Conservative alternative (SOC-watched networks) ---
+    # batch_size: 50
+    # scan_interval_sec: 60
+    # max_scan_threads: 1
+
+  # --------------------------------------------------------------------------
+  # Passive-Only Observer Mode (F3)
+  # --------------------------------------------------------------------------
+  # `python run.py -c entp_config.yaml observer` — gathers baseline intel using
+  # only listen/passive techniques. No port scans, no service connects, no nuclei.
+  observer:
+    enabled: true
+    passive_techniques:
+      - passive_sniff               # Zero packets sent
+      - dhcp_passive                # Zero packets sent
+      - mdns_enum                   # Fast multicast (printers, IoT, macOS)
+      - nbns_query                  # Quick NetBIOS lookups (Windows hosts)
+      - ssdp_discover               # UPnP multicast (routers, NAS)
+
+  scheduler:
+    discovery_interval_hours: 8      # Default 4 — discovery on 200k takes hours to finish
+    scan_interval_hours: 4           # Default 2 — give TCP scans time to complete
+    ml_training_interval_hours: 24
+    nuclei_interval_hours: 12        # Default 6
+    os_fingerprint_interval_hours: 24 # Default 12 — once/day is fine at scale
+    tls_inspection_interval_hours: 24 # Default 12
+    service_enum_interval_hours: 24   # Default 8 — once/day at scale
+    # Per-phase deadlines — abort phase if it exceeds this many seconds (0 = no limit)
+    phase_deadline_scanning: 14400    # 4h max for port scanning
+    phase_deadline_service_enum: 7200 # 2h max for service enumeration
+    phase_deadline_tls: 3600          # 1h max for TLS inspection
+    phase_deadline_os_fingerprint: 0  # 0 = disabled (OS FP already off in enterprise)
+    phase_deadline_udp: 3600          # 1h max for UDP scan
+    phase_deadline_ml: 600            # 10min max for ML analysis
+    phase_deadline_nuclei: 14400      # 4h max for nuclei
+    # --- Conservative alternative (SOC-watched networks) ---
+    # discovery_interval_hours: 12
+    # scan_interval_hours: 8
+
+  dashboard:
+    host: '0.0.0.0'
+    port: 5000
+    secret_key: 'change-this-in-production'
+    refresh_interval: 60             # Default 30 — less DB pressure with 200k rows
+
+  database:
+    path: 'data/hostvigil.db'

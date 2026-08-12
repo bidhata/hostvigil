@@ -1,0 +1,420 @@
+{% extends "base.html" %}
+
+{% block title %}Network Map — HostVigil{% endblock %}
+{% block page_title %}Network Map{% endblock %}
+{% block page_subtitle %}Interactive topology of discovered subnets and hosts, color-coded by risk. Double-click a subnet cluster to expand it.{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-primary" id="btn-refresh" title="Refresh graph data">
+    <i class="bi bi-arrow-clockwise me-1"></i> Refresh
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<script src="{{ url_for('static', filename='vendor/vis-network.min.js') }}"></script>
+<style>
+#network-container {
+    width: 100%;
+    height: calc(100vh - 200px);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius-lg);
+    background: var(--bg-card);
+    position: relative;
+}
+.graph-legend {
+    position: absolute;
+    top: 12px;
+    left: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    z-index: 10;
+    font-size: 0.78rem;
+    box-shadow: var(--shadow-sm);
+    color: var(--text-body);
+}
+.graph-legend h6 {
+    margin-bottom: 8px;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--text-muted);
+}
+.legend-item {
+    display: flex;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    margin-right: 8px;
+    flex-shrink: 0;
+}
+.legend-label { color: var(--text-body); }
+#node-details {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 280px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    padding: 16px;
+    z-index: 10;
+    display: none;
+    box-shadow: var(--shadow-md);
+    color: var(--text-body);
+}
+#node-details.visible { display: block; }
+#node-details h6 { color: var(--primary); margin-bottom: 12px; font-size: 0.85rem; }
+#node-details .detail-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px solid var(--border-light);
+    font-size: 0.78rem;
+}
+#node-details .detail-row:last-child { border-bottom: none; }
+#node-details .detail-label { color: var(--text-muted); }
+#node-details .detail-value { color: var(--text-heading); font-family: var(--font-mono); }
+#node-details .close-btn {
+    position: absolute; top: 8px; right: 12px;
+    background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1rem;
+}
+#node-details .close-btn:hover { color: var(--text-heading); }
+.graph-stats {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    z-index: 10;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    box-shadow: var(--shadow-sm);
+}
+.graph-stats span { margin-right: 14px; }
+.graph-stats .stat-val { color: var(--primary); font-weight: 600; }
+.graph-toolbar { display: flex; gap: 8px; margin-bottom: 12px; align-items: center; }
+.graph-toolbar .btn { white-space: nowrap; }
+.loading-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--bg-card); z-index: 100; border-radius: var(--radius-lg);
+}
+.graph-hint {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-left: auto;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card animate-fade-in-up">
+    <div class="card-header">
+        <div class="card-title"><i class="bi bi-share-fill me-2 text-primary"></i>Network Topology</div>
+        <div class="graph-toolbar">
+            <button class="btn btn-sm btn-outline-secondary" id="btn-fit" title="Fit to view">
+                <i class="bi bi-arrows-fullscreen me-1"></i> Fit
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="btn-physics" title="Toggle physics">
+                <i class="bi bi-stars me-1"></i> Physics
+            </button>
+            <button class="btn btn-sm btn-outline-secondary" id="btn-collapse" title="Collapse back to subnet view" style="display:none;">
+                <i class="bi bi-arrows-collapse me-1"></i> Collapse All
+            </button>
+            <span class="graph-hint" id="graph-hint">Double-click a subnet cluster to expand it</span>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div style="position: relative;">
+            <div id="network-container">
+                <div class="loading-overlay" id="loading-overlay">
+                    <div class="text-center">
+                        <span class="spinner" style="width:28px;height:28px;border-width:3px;margin:0 auto 0.75rem;"></span>
+                        <div class="text-sm text-muted" id="loading-text">Loading network graph...</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="graph-legend">
+                <h6>Risk Level</h6>
+                <div class="legend-item"><div class="legend-dot" style="background:#dc3545;"></div><span class="legend-label">Critical</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#ff6d00;"></div><span class="legend-label">High</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#fcb92c;"></div><span class="legend-label">Medium</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#28a745;"></div><span class="legend-label">Clean / Low</span></div>
+                <h6 class="mt-3">Node Type</h6>
+                <div class="legend-item"><div class="legend-dot" style="background:#6c757d; width:16px; height:16px; border-radius:3px;"></div><span class="legend-label">Subnet Cluster</span></div>
+                <div class="legend-item"><div class="legend-dot" style="background:#6c757d;"></div><span class="legend-label">Individual Host</span></div>
+            </div>
+
+            <div id="node-details">
+                <button class="close-btn" id="close-details">&times;</button>
+                <h6 id="detail-title">Host Details</h6>
+                <div class="detail-row"><span class="detail-label">IP / Subnet</span><span class="detail-value" id="detail-ip">-</span></div>
+                <div class="detail-row"><span class="detail-label">Hostname</span><span class="detail-value" id="detail-hostname">-</span></div>
+                <div class="detail-row"><span class="detail-label">Subnet</span><span class="detail-value" id="detail-subnet">-</span></div>
+                <div class="detail-row"><span class="detail-label">Open Ports</span><span class="detail-value" id="detail-ports">-</span></div>
+                <div class="detail-row"><span class="detail-label">Vulnerabilities</span><span class="detail-value" id="detail-vulns">-</span></div>
+                <div class="detail-row" id="detail-hosts-row"><span class="detail-label">Hosts</span><span class="detail-value" id="detail-hosts">-</span></div>
+                <div class="detail-row"><span class="detail-label">OS</span><span class="detail-value" id="detail-os">-</span></div>
+                <a href="#" class="btn btn-sm btn-outline-primary mt-2 w-100" id="detail-link" style="display:none;">View Host Detail</a>
+            </div>
+
+            <div class="graph-stats">
+                <span>Nodes: <span class="stat-val" id="stat-nodes">0</span></span>
+                <span>Edges: <span class="stat-val" id="stat-edges">0</span></span>
+                <span>Subnets: <span class="stat-val" id="stat-subnets">0</span></span>
+                <span>Total Hosts: <span class="stat-val" id="stat-total-hosts">0</span></span>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var network = null;
+    var physicsEnabled = true;
+    var nodesDataSet = null;
+    var edgesDataSet = null;
+    var currentData = null;
+    var expandedSubnets = new Set();
+    // Track in-flight requests so we can abort them on page unload
+    var pendingFetch = null;
+
+    // Stop vis.js physics + abort in-flight requests when leaving the page.
+    // forceAtlas2Based runs a continuous requestAnimationFrame loop; without
+    // this, navigating away mid-animation can freeze or crash the tab.
+    function cleanupOnUnload() {
+        if (network) {
+            try { network.setOptions({ physics: { enabled: false } }); } catch (e) {}
+            try { network.destroy(); } catch (e) {}
+            network = null;
+        }
+        if (pendingFetch) {
+            try { pendingFetch.abort(); } catch (e) {}
+            pendingFetch = null;
+        }
+    }
+    window.addEventListener('pagehide', cleanupOnUnload);
+    window.addEventListener('beforeunload', cleanupOnUnload);
+
+    var options = {
+        nodes: {
+            shape: 'dot',
+            font: { color: document.documentElement.getAttribute('data-theme') === 'dark' ? '#cfd3ec' : '#33363b', size: 11, multi: 'md' },
+            borderWidth: 2,
+            shadow: { enabled: true, color: 'rgba(0,0,0,0.1)', size: 4 }
+        },
+        edges: { width: 1, color: { color: '#dee2e6' }, smooth: { type: 'continuous', roundness: 0.3 } },
+        physics: {
+            enabled: true,
+            solver: 'forceAtlas2Based',
+            forceAtlas2Based: { gravitationalConstant: -50, centralGravity: 0.008, springLength: 150, springConstant: 0.03, damping: 0.5 },
+            stabilization: { enabled: true, iterations: 150, updateInterval: 25 }
+        },
+        interaction: { hover: true, tooltipDelay: 200, dragNodes: true, dragView: true, zoomView: true }
+    };
+
+    function showLoading(msg) {
+        var overlay = document.getElementById('loading-overlay');
+        document.getElementById('loading-text').textContent = msg || 'Loading...';
+        overlay.style.display = 'flex';
+    }
+
+    function hideLoading() {
+        document.getElementById('loading-overlay').style.display = 'none';
+    }
+
+    function showError(msg) {
+        document.getElementById('loading-overlay').innerHTML =
+            '<div class="text-center text-muted"><i class="bi bi-exclamation-triangle" style="font-size:2rem;"></i><div class="mt-2 text-sm">' + escapeHtml(msg) + '</div></div>';
+    }
+
+    function loadGraphData() {
+        showLoading('Loading subnet clusters...');
+        pendingFetch = fetch('/api/graph/data');
+        pendingFetch
+            .then(function(r) { if (!r.ok) throw new Error('Failed'); return r.json(); })
+            .then(function(data) {
+                currentData = data;
+                expandedSubnets.clear();
+                renderGraph(data);
+                document.getElementById('stat-nodes').textContent = data.nodes.length;
+                document.getElementById('stat-edges').textContent = data.edges.length;
+                document.getElementById('stat-subnets').textContent = data.subnets ? data.subnets.length : 0;
+                document.getElementById('stat-total-hosts').textContent = data.total_hosts || data.nodes.length;
+                document.getElementById('btn-collapse').style.display = 'none';
+                document.getElementById('graph-hint').textContent = 'Double-click a subnet cluster to expand it';
+                hideLoading();
+            })
+            .catch(function(err) {
+                // Ignore aborted requests (page navigation); show error otherwise
+                if (err && err.name === 'AbortError') return;
+                showError('Failed to load graph data');
+            })
+            .finally(function() { pendingFetch = null; });
+    }
+
+    function renderGraph(data) {
+        var container = document.getElementById('network-container');
+        var visNodes = data.nodes.map(function(n) { return {
+            id: n.id,
+            label: n.label,
+            title: n.title,
+            color: { background: n.color, border: n.color, highlight: { background: n.color, border: '#333' }, hover: { background: n.color, border: '#333' } },
+            size: n.size,
+            shape: n.is_cluster ? 'diamond' : 'dot',
+            _data: n
+        }; });
+        var visEdges = data.edges.map(function(e) { return { id: e.id, from: e.from, to: e.to, color: e.color }; });
+
+        nodesDataSet = new vis.DataSet(visNodes);
+        edgesDataSet = new vis.DataSet(visEdges);
+
+        if (network) network.destroy();
+
+        var nodeCount = visNodes.length;
+        var opts = JSON.parse(JSON.stringify(options));
+        if (nodeCount > 150) {
+            // forceAtlas2Based is very CPU-hungry; disable physics above a
+            // modest node count so the tab stays responsive (and doesn't
+            // freeze when the user navigates away mid-animation).
+            opts.physics.enabled = false;
+            opts.physics.stabilization.enabled = false;
+            physicsEnabled = false;
+        } else {
+            physicsEnabled = true;
+        }
+
+        network = new vis.Network(container, { nodes: nodesDataSet, edges: edgesDataSet }, opts);
+
+        network.on('click', function(params) {
+            if (params.nodes.length > 0) {
+                var visNode = nodesDataSet.get(params.nodes[0]);
+                if (visNode && visNode._data) showDetails(visNode._data);
+            } else { hideDetails(); }
+        });
+
+        network.on('doubleClick', function(params) {
+            if (params.nodes.length > 0) {
+                var visNode = nodesDataSet.get(params.nodes[0]);
+                if (visNode && visNode._data && visNode._data.is_cluster) {
+                    expandSubnet(visNode._data.subnet);
+                }
+            }
+        });
+
+        network.on('stabilizationIterationsDone', function() {
+            network.setOptions({ physics: { stabilization: { enabled: false } } });
+        });
+    }
+
+    function expandSubnet(subnet) {
+        if (expandedSubnets.has(subnet)) return;
+        showLoading('Expanding ' + subnet + '...');
+
+        pendingFetch = fetch('/api/graph/data?subnet=' + encodeURIComponent(subnet));
+        pendingFetch
+            .then(function(r) { if (!r.ok) throw new Error('Failed'); return r.json(); })
+            .then(function(data) {
+                expandedSubnets.add(subnet);
+
+                var clusterNodeId = 'subnet_' + subnet.replace('.0/24', '');
+                nodesDataSet.remove(clusterNodeId);
+
+                var connectedEdges = edgesDataSet.get({
+                    filter: function(e) { return e.from === clusterNodeId || e.to === clusterNodeId; }
+                });
+                edgesDataSet.remove(connectedEdges.map(function(e) { return e.id; }));
+
+                var newNodes = data.nodes.map(function(n) { return {
+                    id: n.id, label: n.label, title: n.title,
+                    color: { background: n.color, border: n.color, highlight: { background: n.color, border: '#333' }, hover: { background: n.color, border: '#333' } },
+                    size: n.size, shape: 'dot', _data: n
+                }; });
+                nodesDataSet.add(newNodes);
+
+                var maxEdgeId = edgesDataSet.max('id');
+                var baseId = (maxEdgeId && maxEdgeId.id ? maxEdgeId.id : 0) + 1;
+                var newEdges = data.edges.map(function(e, i) { return { id: baseId + i, from: e.from, to: e.to, color: e.color }; });
+                edgesDataSet.add(newEdges);
+
+                document.getElementById('stat-nodes').textContent = nodesDataSet.length;
+                document.getElementById('stat-edges').textContent = edgesDataSet.length;
+                document.getElementById('btn-collapse').style.display = '';
+                document.getElementById('graph-hint').textContent =
+                    data.truncated
+                        ? subnet + ': showing ' + data.nodes.length + ' hosts (truncated)'
+                        : subnet + ': ' + data.nodes.length + ' hosts';
+
+                hideLoading();
+
+                if (network) network.fit({ animation: { duration: 500 } });
+            })
+            .catch(function(err) {
+                if (err && err.name === 'AbortError') return;
+                hideLoading();
+                showError('Failed to expand subnet');
+            })
+            .finally(function() { pendingFetch = null; });
+    }
+
+    function showDetails(node) {
+        document.getElementById('detail-title').textContent = node.is_cluster ? 'Subnet Cluster' : 'Host Details';
+        document.getElementById('detail-ip').textContent = node.ip || '-';
+        document.getElementById('detail-hostname').textContent =
+            (!node.is_cluster && node.label !== node.ip) ? node.label : '-';
+        document.getElementById('detail-subnet').textContent = node.subnet || '-';
+        document.getElementById('detail-ports').textContent = node.port_count || '0';
+        document.getElementById('detail-vulns').textContent = node.vuln_count || '0';
+
+        var hostsRow = document.getElementById('detail-hosts-row');
+        var hostsVal = document.getElementById('detail-hosts');
+        if (node.is_cluster && node.host_count) {
+            hostsRow.style.display = '';
+            hostsVal.textContent = node.host_count;
+        } else {
+            hostsRow.style.display = 'none';
+        }
+
+        var osLine = (node.title || '').split('\n').filter(function(l) { return l.indexOf('OS:') === 0; })[0];
+        document.getElementById('detail-os').textContent = osLine ? osLine.replace('OS: ', '') : '-';
+
+        var detailLink = document.getElementById('detail-link');
+        if (!node.is_cluster && node.ip) {
+            detailLink.href = '/host/' + node.ip;
+            detailLink.style.display = '';
+        } else {
+            detailLink.style.display = 'none';
+        }
+
+        document.getElementById('node-details').classList.add('visible');
+    }
+
+    function hideDetails() { document.getElementById('node-details').classList.remove('visible'); }
+
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = s || ''; return d.innerHTML; }
+
+    document.getElementById('close-details').addEventListener('click', hideDetails);
+    document.getElementById('btn-fit').addEventListener('click', function() { if (network) network.fit({ animation: true }); });
+    document.getElementById('btn-physics').addEventListener('click', function() {
+        physicsEnabled = !physicsEnabled;
+        if (network) network.setOptions({ physics: { enabled: physicsEnabled } });
+        this.classList.toggle('active', physicsEnabled);
+    });
+    document.getElementById('btn-refresh').addEventListener('click', loadGraphData);
+    document.getElementById('btn-collapse').addEventListener('click', loadGraphData);
+
+    loadGraphData();
+})();
+</script>
+{% endblock %}

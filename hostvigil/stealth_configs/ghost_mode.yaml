@@ -1,0 +1,51 @@
+# HostVigil - GHOST MODE Configuration
+# Maximum Stealth - Minimal Detail
+# Use Case: High-security environments, first-pass recon, active SOC
+
+hostvigil:
+  discovery:
+    target_ranges: []  # FILL IN YOUR TARGET SUBNET (e.g., "10.0.100.0/24")
+    wave_enabled: true
+    wave_size: 10
+    wave_delay_seconds: 3600
+    
+    techniques:
+      - "passive_sniff"
+      - "dns_reverse_walk"
+      - "mdns_enum"
+  
+  scanner:
+    mode: two_phase
+    naabu:
+      rate: 25                   # Very low rate for ghost mode stealth
+      threads: 2                 # Minimal threads
+    nmap:
+      phase2_only: false
+  
+  nuclei:
+    auto_run: false
+    run_on_web_hosts: false
+  
+  pipeline:
+    mode: wave
+    wave_size: 10
+    parallel_phases: false
+  
+  stealth:
+    min_delay: 300.0
+    max_delay: 900.0
+    jitter_factor: 0.7
+    scan_window_enabled: true
+    scan_window_start: 10
+    scan_window_end: 16
+    business_days_only: true
+  
+  logging:
+    level: "WARNING"
+    remote_syslog: false
+    file_path: "/tmp/.hv"
+  
+  abort_conditions:
+    honeypot_detected: true
+    scan_blocked_count: 5
+    error_rate_threshold: 0.2

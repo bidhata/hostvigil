@@ -1,0 +1,667 @@
+{% extends "base.html" %}
+
+{% block title %}Hosts — HostVigil{% endblock %}
+
+{% block extra_css %}
+<style>
+.hosts-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1rem}
+.hosts-title-group{display:flex;align-items:center;gap:.75rem}
+.hosts-title-group h1{font-size:1.5rem;font-weight:700;margin:0}
+.host-count-badge{background:var(--primary);color:#fff;font-size:.75rem;font-weight:600;padding:.2rem .6rem;border-radius:var(--radius-full);min-width:2rem;text-align:center}
+.hosts-subtitle{color:var(--text-muted);font-size:.85rem;margin-top:.15rem}
+.hosts-actions{display:flex;gap:.5rem;align-items:center}
+
+/* Filters bar */
+.filters-bar{display:flex;align-items:center;gap:.75rem;flex-wrap:wrap;padding:1rem 0;border-bottom:1px solid var(--border)}
+.search-box{position:relative;flex:1;min-width:220px;max-width:360px}
+.search-box input{width:100%;padding:.5rem .75rem .5rem 2.25rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);font-size:.85rem;transition:border-color .2s}
+.search-box input:focus{outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(115,103,240,.15)}
+.search-box .search-icon{position:absolute;left:.7rem;top:50%;transform:translateY(-50%);color:var(--text-muted);font-size:.9rem;pointer-events:none}
+.search-box .clear-btn{position:absolute;right:.5rem;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:1rem;padding:0;line-height:1;display:none}
+.search-box .clear-btn.visible{display:block}
+
+.status-pills{display:flex;gap:0;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.status-pills button{padding:.4rem .75rem;font-size:.8rem;font-weight:500;border:none;background:var(--bg-card);color:var(--text-muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.status-pills button:not(:last-child){border-right:1px solid var(--border)}
+.status-pills button.active{background:var(--primary);color:#fff}
+.status-pills button:hover:not(.active){background:var(--bg-hover)}
+
+.filter-select{padding:.4rem .6rem;font-size:.8rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);cursor:pointer;min-width:100px}
+.filter-select:focus{outline:none;border-color:var(--primary)}
+
+.per-page-select{padding:.4rem .5rem;font-size:.8rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);cursor:pointer;width:70px}
+
+.results-count{font-size:.8rem;color:var(--text-muted);white-space:nowrap;margin-left:auto}
+
+/* Table */
+.hosts-table-wrap{overflow-x:auto;margin-top:1rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card)}
+.hosts-table{width:100%;border-collapse:collapse;font-size:.85rem}
+.hosts-table thead{position:sticky;top:0;z-index:2;background:var(--bg-elevated)}
+.hosts-table th{padding:.65rem .75rem;text-align:left;font-weight:600;font-size:.75rem;text-transform:uppercase;letter-spacing:.4px;color:var(--text-muted);border-bottom:1px solid var(--border);cursor:pointer;user-select:none;white-space:nowrap;transition:color .15s}
+.hosts-table th:hover{color:var(--text)}
+.hosts-table th .sort-icon{display:inline-block;margin-left:.3rem;font-size:.65rem;opacity:.4;transition:opacity .15s}
+.hosts-table th.sorted .sort-icon{opacity:1;color:var(--primary)}
+.hosts-table th.sorted{color:var(--primary)}
+.hosts-table td{padding:.6rem .75rem;border-bottom:1px solid var(--border);vertical-align:middle}
+.hosts-table tbody tr{cursor:pointer;transition:background .1s}
+.hosts-table tbody tr:hover{background:var(--bg-hover)}
+.hosts-table tbody tr:last-child td{border-bottom:none}
+
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}
+.status-dot.active{background:#28c76f;box-shadow:0 0 4px rgba(40,199,111,.4)}
+.status-dot.inactive{background:var(--text-muted);opacity:.5}
+
+.ip-cell{font-family:'JetBrains Mono',monospace;font-size:.82rem;font-weight:500}
+.hostname-cell{max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.os-cell{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.port-badge{background:var(--bg-elevated);color:var(--text);padding:.15rem .45rem;border-radius:var(--radius);font-size:.75rem;font-weight:600;display:inline-block;min-width:1.6rem;text-align:center}
+.port-badge.has-ports{background:rgba(115,103,240,.12);color:var(--primary)}
+.lastseen-cell{color:var(--text-muted);font-size:.8rem;white-space:nowrap}
+.action-btn{padding:.3rem .5rem;border:none;background:var(--bg-hover);border-radius:var(--radius);color:var(--text-muted);cursor:pointer;font-size:.8rem;transition:all .15s}
+.action-btn:hover{background:var(--primary);color:#fff}
+
+/* Skeleton */
+.skeleton-row td{padding:.65rem .75rem}
+.skeleton-bar{height:.85rem;border-radius:var(--radius);background:var(--bg-elevated);animation:skeleton-shimmer 1.5s infinite}
+.skeleton-bar.sm{width:60px}
+.skeleton-bar.md{width:110px}
+.skeleton-bar.lg{width:160px}
+.skeleton-bar.xs{width:30px;height:.5rem;border-radius:50%}
+@keyframes skeleton-shimmer{0%{opacity:.6}50%{opacity:.3}100%{opacity:.6}}
+
+/* Pagination */
+.pagination-bar{display:flex;align-items:center;justify-content:space-between;padding:1rem 0;flex-wrap:wrap;gap:.75rem}
+.pagination-info{font-size:.8rem;color:var(--text-muted)}
+.pagination-controls{display:flex;align-items:center;gap:.25rem}
+.page-btn{min-width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);font-size:.8rem;font-weight:500;cursor:pointer;transition:all .15s}
+.page-btn:hover:not(:disabled):not(.active){background:var(--bg-hover);border-color:var(--primary)}
+.page-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
+.page-ellipsis{min-width:2rem;height:2rem;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:.8rem}
+.page-jump{display:flex;align-items:center;gap:.4rem;margin-left:.75rem}
+.page-jump label{font-size:.78rem;color:var(--text-muted)}
+.page-jump input{width:60px;padding:.3rem .5rem;font-size:.8rem;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-card);color:var(--text);text-align:center}
+.page-jump input:focus{outline:none;border-color:var(--primary)}
+
+/* Empty state */
+.empty-state{text-align:center;padding:3rem 1rem;color:var(--text-muted)}
+.empty-state i{font-size:2.5rem;margin-bottom:.75rem;opacity:.4}
+.empty-state p{font-size:.9rem;margin-top:.5rem}
+
+/* Export dropdown */
+.export-dropdown{position:relative;display:inline-block}
+.export-dropdown .dropdown-menu{position:absolute;top:100%;right:0;margin-top:.3rem;background:var(--bg-card);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-lg);min-width:140px;z-index:100;display:none;overflow:hidden}
+.export-dropdown .dropdown-menu.show{display:block}
+.export-dropdown .dropdown-menu button{display:flex;align-items:center;gap:.5rem;width:100%;padding:.5rem .75rem;border:none;background:none;color:var(--text);font-size:.82rem;cursor:pointer;text-align:left;transition:background .1s}
+.export-dropdown .dropdown-menu button:hover{background:var(--bg-hover)}
+.export-dropdown .dropdown-menu button i{width:1rem;text-align:center;color:var(--text-muted)}
+
+@media(max-width:768px){
+  .filters-bar{flex-direction:column;align-items:stretch;gap:.6rem}
+  .search-box{max-width:100%}
+  .results-count{margin-left:0}
+  .pagination-bar{flex-direction:column;align-items:center}
+  .page-jump{margin-left:0}
+}
+</style>
+{% endblock %}
+
+{% block page_title %}Hosts{% endblock %}
+{% block page_subtitle %}Discovered network hosts{% endblock %}
+
+{% block page_actions %}
+<div class="hosts-actions">
+  <div class="export-dropdown">
+    <button class="btn btn-outline btn-sm" id="exportBtn" title="Export hosts">
+      <i class="bi bi-download"></i> Export
+    </button>
+    <div class="dropdown-menu" id="exportMenu">
+      <button data-format="csv"><i class="bi bi-filetype-csv"></i> CSV</button>
+      <button data-format="json"><i class="bi bi-filetype-json"></i> JSON</button>
+      <button data-format="ips"><i class="bi bi-list-ul"></i> IP List</button>
+    </div>
+  </div>
+  <button class="btn btn-outline btn-sm" id="refreshBtn" title="Refresh">
+    <i class="bi bi-arrow-clockwise"></i>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+  <!-- Filters Bar -->
+  <div class="filters-bar">
+    <div class="search-box">
+      <i class="bi bi-search search-icon"></i>
+      <input type="text" id="searchInput" placeholder="Search by IP, hostname, or OS..." autocomplete="off" spellcheck="false">
+      <button class="clear-btn" id="clearSearch" title="Clear">&times;</button>
+    </div>
+
+    <div class="status-pills" id="statusPills">
+      <button data-status="" class="active">All</button>
+      <button data-status="active">Active</button>
+      <button data-status="inactive">Inactive</button>
+    </div>
+
+    <select class="filter-select" id="osFilter" title="Filter by OS">
+      <option value="">All OS</option>
+    </select>
+
+    <select class="per-page-select" id="perPageSelect" title="Rows per page">
+      <option value="25">25</option>
+      <option value="50" selected>50</option>
+      <option value="100">100</option>
+    </select>
+
+    <span class="results-count" id="resultsCount">Loading...</span>
+  </div>
+
+  <!-- Table -->
+  <div class="hosts-table-wrap">
+    <table class="hosts-table" id="hostsTable">
+      <thead>
+        <tr>
+          <th data-sort="is_active" style="width:40px"><span class="sort-icon">⬍</span></th>
+          <th data-sort="ip">IP Address <span class="sort-icon">⬍</span></th>
+          <th data-sort="hostname">Hostname <span class="sort-icon">⬍</span></th>
+          <th data-sort="os_fingerprint">OS <span class="sort-icon">⬍</span></th>
+          <th data-sort="port_count">Ports <span class="sort-icon">⬍</span></th>
+          <th data-sort="last_seen">Last Seen <span class="sort-icon">⬍</span></th>
+          <th style="width:50px"></th>
+        </tr>
+      </thead>
+      <tbody id="hostsBody">
+        <!-- Rows injected by JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Empty State (hidden by default) -->
+  <div class="empty-state" id="emptyState" style="display:none">
+    <i class="bi bi-hdd-network"></i>
+    <p>No hosts found matching your filters.</p>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination-bar" id="paginationBar">
+    <span class="pagination-info" id="paginationInfo"></span>
+    <div class="pagination-controls" id="paginationControls"></div>
+    <div class="page-jump">
+      <label for="jumpInput">Go to:</label>
+      <input type="number" id="jumpInput" min="1" placeholder="#">
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+'use strict';
+
+// ─── State ───────────────────────────────────────────────────────────
+const state = {
+  page: 1,
+  perPage: 50,
+  search: '',
+  status: '',
+  os: '',
+  sort: 'ip',
+  order: 'asc',
+  total: 0,
+  pages: 0,
+  loading: false,
+  hosts: []
+};
+
+let abortCtrl = null;
+let searchTimeout = null;
+let refreshInterval = null;
+const REFRESH_MS = 30000;
+const DEBOUNCE_MS = 300;
+
+// ─── DOM References ──────────────────────────────────────────────────
+const $body = document.getElementById('hostsBody');
+const $search = document.getElementById('searchInput');
+const $clearSearch = document.getElementById('clearSearch');
+const $statusPills = document.getElementById('statusPills');
+const $osFilter = document.getElementById('osFilter');
+const $perPage = document.getElementById('perPageSelect');
+const $resultsCount = document.getElementById('resultsCount');
+const $emptyState = document.getElementById('emptyState');
+const $table = document.getElementById('hostsTable');
+const $paginationInfo = document.getElementById('paginationInfo');
+const $paginationCtrl = document.getElementById('paginationControls');
+const $jumpInput = document.getElementById('jumpInput');
+const $exportBtn = document.getElementById('exportBtn');
+const $exportMenu = document.getElementById('exportMenu');
+const $refreshBtn = document.getElementById('refreshBtn');
+
+// ─── URL State Management ────────────────────────────────────────────
+function readURL() {
+  const p = new URLSearchParams(window.location.search);
+  state.page = parseInt(p.get('page')) || 1;
+  state.perPage = parseInt(p.get('per_page')) || 50;
+  state.search = p.get('search') || '';
+  state.status = p.get('status') || '';
+  state.os = p.get('os') || '';
+  state.sort = p.get('sort') || 'ip';
+  state.order = p.get('order') || 'asc';
+}
+
+function writeURL() {
+  const p = new URLSearchParams();
+  if (state.page > 1) p.set('page', state.page);
+  if (state.perPage !== 50) p.set('per_page', state.perPage);
+  if (state.search) p.set('search', state.search);
+  if (state.status) p.set('status', state.status);
+  if (state.os) p.set('os', state.os);
+  if (state.sort !== 'ip') p.set('sort', state.sort);
+  if (state.order !== 'asc') p.set('order', state.order);
+  const qs = p.toString();
+  const url = window.location.pathname + (qs ? '?' + qs : '');
+  history.replaceState(null, '', url);
+}
+
+// ─── Fetch Hosts ─────────────────────────────────────────────────────
+async function fetchHosts(silent) {
+  if (abortCtrl) abortCtrl.abort();
+  abortCtrl = new AbortController();
+
+  if (!silent) {
+    state.loading = true;
+    renderSkeleton();
+  }
+
+  const params = new URLSearchParams({
+    page: state.page,
+    per_page: state.perPage,
+    search: state.search,
+    status: state.status,
+    os: state.os,
+    sort: state.sort,
+    order: state.order
+  });
+
+  try {
+    const resp = await fetch('/api/hosts?' + params.toString(), {
+      signal: abortCtrl.signal,
+      headers: { 'Accept': 'application/json' }
+    });
+    if (!resp.ok) throw new Error('HTTP ' + resp.status);
+    const data = await resp.json();
+
+    state.hosts = data.hosts || [];
+    state.total = data.pagination?.total || 0;
+    state.pages = data.pagination?.pages || 0;
+    state.page = data.pagination?.page || 1;
+    state.loading = false;
+
+    renderTable();
+    renderPagination();
+    updateResultsCount();
+    writeURL();
+    updateSortHeaders();
+  } catch (e) {
+    if (e.name === 'AbortError') return;
+    state.loading = false;
+    console.error('Fetch hosts error:', e);
+    if (!silent) showToast && showToast('Failed to load hosts', 'error');
+  }
+}
+
+
+// ─── Render Functions ────────────────────────────────────────────────
+function renderTable() {
+  const hosts = state.hosts;
+  const tableWrap = document.querySelector('.hosts-table-wrap');
+  if (!hosts.length) {
+    $body.innerHTML = '';
+    $emptyState.style.display = 'block';
+    tableWrap.style.display = 'none';
+    return;
+  }
+  $emptyState.style.display = 'none';
+  tableWrap.style.display = '';
+
+  const frag = document.createDocumentFragment();
+  for (let i = 0; i < hosts.length; i++) {
+    const h = hosts[i];
+    const tr = document.createElement('tr');
+    tr.dataset.id = h.ip;
+    tr.innerHTML =
+      '<td><span class="status-dot ' + (h.is_active ? 'active' : 'inactive') + '"></span></td>' +
+      '<td class="ip-cell">' + escapeHtml(h.ip || '') + '</td>' +
+      '<td class="hostname-cell" title="' + escapeHtml(h.hostname || '') + '">' + escapeHtml(h.hostname || '—') + '</td>' +
+      '<td class="os-cell" title="' + escapeHtml(h.os || h.os_fingerprint || '') + '">' + escapeHtml(h.os || h.os_fingerprint || '—') + '</td>' +
+      '<td><span class="port-badge' + (h.port_count > 0 ? ' has-ports' : '') + '">' + (h.port_count || 0) + '</span></td>' +
+      '<td class="lastseen-cell">' + relativeTime(h.last_seen) + '</td>' +
+      '<td><button class="action-btn" title="View details"><i class="bi bi-chevron-right"></i></button></td>';
+    frag.appendChild(tr);
+  }
+  $body.innerHTML = '';
+  $body.appendChild(frag);
+}
+
+function renderSkeleton() {
+  $emptyState.style.display = 'none';
+  document.querySelector('.hosts-table-wrap').style.display = '';
+  const rows = state.perPage > 50 ? 20 : 12;
+  let html = '';
+  for (let i = 0; i < rows; i++) {
+    html += '<tr class="skeleton-row">' +
+      '<td><div class="skeleton-bar xs"></div></td>' +
+      '<td><div class="skeleton-bar md"></div></td>' +
+      '<td><div class="skeleton-bar lg"></div></td>' +
+      '<td><div class="skeleton-bar md"></div></td>' +
+      '<td><div class="skeleton-bar sm"></div></td>' +
+      '<td><div class="skeleton-bar md"></div></td>' +
+      '<td><div class="skeleton-bar xs"></div></td></tr>';
+  }
+  $body.innerHTML = html;
+}
+
+function renderPagination() {
+  const { page, pages, total, perPage } = state;
+  if (pages <= 1) {
+    $paginationCtrl.innerHTML = '';
+    $paginationInfo.textContent = '';
+    return;
+  }
+
+  $paginationInfo.textContent = 'Page ' + formatNum(page) + ' of ' + formatNum(pages);
+
+  let btns = '';
+  btns += '<button class="page-btn" data-page="' + (page - 1) + '"' + (page <= 1 ? ' disabled' : '') + ' title="Previous (←)"><i class="bi bi-chevron-left"></i></button>';
+
+  const pageNums = getPageNumbers(page, pages);
+  for (const p of pageNums) {
+    if (p === '...') {
+      btns += '<span class="page-ellipsis">…</span>';
+    } else {
+      btns += '<button class="page-btn' + (p === page ? ' active' : '') + '" data-page="' + p + '">' + p + '</button>';
+    }
+  }
+
+  btns += '<button class="page-btn" data-page="' + (page + 1) + '"' + (page >= pages ? ' disabled' : '') + ' title="Next (→)"><i class="bi bi-chevron-right"></i></button>';
+
+  $paginationCtrl.innerHTML = btns;
+  $jumpInput.max = pages;
+  $jumpInput.value = '';
+}
+
+function getPageNumbers(current, total) {
+  if (total <= 7) return Array.from({length: total}, (_, i) => i + 1);
+  const pages = [];
+  pages.push(1);
+  if (current > 4) pages.push('...');
+  const rangeStart = Math.max(2, current - 2);
+  const rangeEnd = Math.min(total - 1, current + 2);
+  for (let i = rangeStart; i <= rangeEnd; i++) pages.push(i);
+  if (current < total - 3) pages.push('...');
+  pages.push(total);
+  return pages;
+}
+
+function updateResultsCount() {
+  const { page, perPage, total } = state;
+  if (total === 0) {
+    $resultsCount.textContent = 'No results';
+    return;
+  }
+  const start = (page - 1) * perPage + 1;
+  const end = Math.min(page * perPage, total);
+  $resultsCount.textContent = 'Showing ' + formatNum(start) + '–' + formatNum(end) + ' of ' + formatNum(total);
+}
+
+function updateSortHeaders() {
+  const ths = $table.querySelectorAll('th[data-sort]');
+  ths.forEach(th => {
+    const col = th.dataset.sort;
+    th.classList.toggle('sorted', col === state.sort);
+    const icon = th.querySelector('.sort-icon');
+    if (col === state.sort) {
+      icon.textContent = state.order === 'asc' ? '▲' : '▼';
+    } else {
+      icon.textContent = '⬍';
+    }
+  });
+}
+
+
+// ─── Utilities ───────────────────────────────────────────────────────
+function formatNum(n) {
+  return Number(n).toLocaleString('en-US');
+}
+
+function relativeTime(dateStr) {
+  if (!dateStr) return '—';
+  const now = Date.now();
+  const ts = new Date(dateStr).getTime();
+  if (isNaN(ts)) return '—';
+  const diff = Math.floor((now - ts) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return Math.floor(diff / 60) + ' min ago';
+  if (diff < 86400) return Math.floor(diff / 3600) + 'h ago';
+  if (diff < 604800) return Math.floor(diff / 86400) + 'd ago';
+  return new Date(ts).toLocaleDateString();
+}
+
+function escapeHtml(str) {
+  if (typeof window.escapeHtml === 'function') return window.escapeHtml(str);
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+// ─── Event Handlers ──────────────────────────────────────────────────
+
+// Search with debounce
+$search.addEventListener('input', function() {
+  const val = this.value.trim();
+  $clearSearch.classList.toggle('visible', val.length > 0);
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    state.search = val;
+    state.page = 1;
+    fetchHosts();
+  }, DEBOUNCE_MS);
+});
+
+$clearSearch.addEventListener('click', () => {
+  $search.value = '';
+  $clearSearch.classList.remove('visible');
+  state.search = '';
+  state.page = 1;
+  fetchHosts();
+});
+
+// Status pills
+$statusPills.addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  $statusPills.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  state.status = btn.dataset.status;
+  state.page = 1;
+  fetchHosts();
+});
+
+// OS filter
+$osFilter.addEventListener('change', () => {
+  state.os = $osFilter.value;
+  state.page = 1;
+  fetchHosts();
+});
+
+// Per page
+$perPage.addEventListener('change', () => {
+  state.perPage = parseInt($perPage.value);
+  state.page = 1;
+  fetchHosts();
+});
+
+// Sort columns
+$table.querySelector('thead').addEventListener('click', (e) => {
+  const th = e.target.closest('th[data-sort]');
+  if (!th) return;
+  const col = th.dataset.sort;
+  if (state.sort === col) {
+    state.order = state.order === 'asc' ? 'desc' : 'asc';
+  } else {
+    state.sort = col;
+    state.order = 'asc';
+  }
+  state.page = 1;
+  fetchHosts();
+});
+
+// Pagination clicks
+$paginationCtrl.addEventListener('click', (e) => {
+  const btn = e.target.closest('.page-btn');
+  if (!btn || btn.disabled) return;
+  const p = parseInt(btn.dataset.page);
+  if (p >= 1 && p <= state.pages) {
+    state.page = p;
+    fetchHosts();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+});
+
+// Jump to page
+$jumpInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    const p = parseInt($jumpInput.value);
+    if (p >= 1 && p <= state.pages) {
+      state.page = p;
+      fetchHosts();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }
+});
+
+// Keyboard shortcuts for pagination
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'ArrowLeft' && state.page > 1) {
+    state.page--;
+    fetchHosts();
+  } else if (e.key === 'ArrowRight' && state.page < state.pages) {
+    state.page++;
+    fetchHosts();
+  }
+});
+
+// Row click → host detail
+$body.addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-id]');
+  if (!tr) return;
+  window.location.href = '/hosts/' + tr.dataset.id;
+});
+
+// Refresh button
+$refreshBtn.addEventListener('click', () => {
+  $refreshBtn.querySelector('i').classList.add('spin');
+  fetchHosts().finally(() => {
+    setTimeout(() => $refreshBtn.querySelector('i').classList.remove('spin'), 500);
+  });
+});
+
+// Export dropdown
+$exportBtn.addEventListener('click', (e) => {
+  e.stopPropagation();
+  $exportMenu.classList.toggle('show');
+});
+document.addEventListener('click', () => $exportMenu.classList.remove('show'));
+
+$exportMenu.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-format]');
+  if (!btn) return;
+  const fmt = btn.dataset.format;
+  const params = new URLSearchParams({
+    search: state.search,
+    status: state.status,
+    os: state.os,
+    format: fmt
+  });
+  window.location.href = '/api/export/hosts?' + params.toString();
+  $exportMenu.classList.remove('show');
+});
+
+
+// ─── OS Filter Population ────────────────────────────────────────────
+async function loadOSOptions() {
+  try {
+    const resp = await fetch('/api/hosts/os-types');
+    if (resp.ok) {
+      const data = await resp.json();
+      const types = data.os_types || [];
+      types.forEach(os => {
+        if (!os) return;
+        const opt = document.createElement('option');
+        opt.value = os;
+        opt.textContent = os;
+        $osFilter.appendChild(opt);
+      });
+    }
+  } catch (e) {
+    // Silently ignore — dropdown stays with "All OS"
+  }
+}
+
+// ─── Auto Refresh ────────────────────────────────────────────────────
+function startAutoRefresh() {
+  stopAutoRefresh();
+  refreshInterval = setInterval(() => {
+    fetchHosts(true); // silent=true, no skeleton flash
+  }, REFRESH_MS);
+}
+
+function stopAutoRefresh() {
+  if (refreshInterval) {
+    clearInterval(refreshInterval);
+    refreshInterval = null;
+  }
+}
+
+// Pause refresh when tab is hidden
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+    stopAutoRefresh();
+  } else {
+    fetchHosts(true);
+    startAutoRefresh();
+  }
+});
+
+// ─── Initialize ──────────────────────────────────────────────────────
+function init() {
+  readURL();
+
+  // Sync UI with state from URL
+  $search.value = state.search;
+  $clearSearch.classList.toggle('visible', state.search.length > 0);
+  $perPage.value = state.perPage;
+  $osFilter.value = state.os;
+
+  // Set active status pill
+  $statusPills.querySelectorAll('button').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.status === state.status);
+  });
+
+  loadOSOptions();
+  fetchHosts();
+  startAutoRefresh();
+}
+
+// Handle browser back/forward
+window.addEventListener('popstate', () => {
+  readURL();
+  fetchHosts();
+});
+
+init();
+
+})();
+</script>
+{% endblock %}

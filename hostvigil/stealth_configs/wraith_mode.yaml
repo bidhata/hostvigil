@@ -1,0 +1,89 @@
+# HostVigil - WRAITH MODE Configuration
+# Aggressive Stealth, Maximum Detail
+# Use Case: Authorized assessment, need results in weeks not months
+
+hostvigil:
+  discovery:
+    # Phased approach - prioritize crown jewels
+    target_ranges: []  # FILL IN: Your priority targets
+    # Recommended order:
+    # Week 1: Infrastructure (DCs, DNS, PKI)
+    # Week 2: Applications (App servers, DBs)
+    # Week 3+: Workstations
+    
+    wave_enabled: true
+    wave_size: 200
+    wave_delay_seconds: 120  # 2 min
+  
+  scanner:
+    mode: two_phase
+    
+    naabu:
+      rate: 150                  # Aggressive rate
+      threads: 100               # High thread count
+    
+    nmap:
+      phase2_only: true
+      version_detection: true
+      os_detection: true
+      scripts: true
+      script_args: "unsafe=0"  # Safe scripts only
+      timing: T3
+  
+  nuclei:
+    auto_run: true
+    run_on_web_hosts: true
+    severity_filter: ["critical", "high", "medium"]
+    rate_limit: 25
+    concurrency: 5
+    templates:
+      include: ["cve", "default-login", "misconfig", "exposures"]
+  
+  service_enum:
+    enabled: true
+    grab_banners: true
+    http_enumeration: true
+    http_wordlist: "/usr/share/wordlists/dirb/common.txt"
+    smb_enumeration: true
+    ldap_enumeration: true
+  
+  tls_inspection:
+    enabled: true
+    extract_certs: true
+    check_weak_ciphers: true
+  
+  os_fingerprint:
+    enabled: true
+    active: true
+    passive: true
+  
+  pipeline:
+    mode: wave
+    wave_size: 200
+    parallel_phases: true   # Faster but more noise
+    nuclei_on_web_discovery: true
+  
+  stealth:
+    min_delay: 30.0
+    max_delay: 300.0
+    jitter_factor: 0.3
+    scan_window_enabled: true
+    scan_window_start: 22   # 10 PM
+    scan_window_end: 6      # 6 AM (night ops)
+    weekend_only: false
+  
+  logging:
+    level: "DEBUG"
+    remote_syslog: false
+    file_path: "data/ops_detail.log"
+    backup_to_encrypted: true
+  
+  abort_conditions:
+    honeypot_detected: true
+    scan_blocked_count: 25
+    error_rate_threshold: 0.5
+
+# Expected:
+# - 200 hosts/hour = 4,800 hosts/day
+# - 200K hosts in ~6 weeks
+# - Detection risk: 🟠 MEDIUM-HIGH

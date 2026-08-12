@@ -1,0 +1,652 @@
+{% extends "base.html" %}
+
+{% block title %}Scan Controls — HostVigil{% endblock %}
+
+{% block extra_css %}
+<style>
+/* --- Scan Controls Page --- */
+.scan-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+  margin-bottom: 24px;
+}
+@media (max-width: 1200px) { .scan-grid { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { .scan-grid { grid-template-columns: 1fr; } }
+
+.scan-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all var(--transition-base);
+}
+.scan-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.scan-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.scan-card-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.scan-card-icon.discovery { background: var(--primary-muted); color: var(--primary); }
+.scan-card-icon.tcp { background: var(--info-muted); color: var(--info); }
+.scan-card-icon.udp { background: var(--warning-muted); color: var(--warning); }
+.scan-card-icon.os { background: var(--success-muted); color: var(--success); }
+.scan-card-icon.tls { background: var(--orange-muted); color: var(--orange); }
+.scan-card-icon.enum { background: var(--danger-muted); color: var(--danger); }
+.scan-card-icon.nuclei { background: var(--danger-muted); color: var(--danger); }
+.scan-card-icon.full { background: var(--primary-muted); color: var(--primary); }
+.scan-card-icon.svc { background: var(--info-muted); color: var(--info); }
+
+.scan-card-info { flex: 1; min-width: 0; }
+.scan-card-title { font-size: 0.9rem; font-weight: 600; color: var(--text-primary); }
+.scan-card-desc { font-size: 0.76rem; color: var(--text-secondary); margin-top: 2px; }
+
+.scan-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.scan-card-last {
+  font-size: 0.72rem;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.scan-card .btn-run { min-width: 72px; }
+.scan-card .btn-run.running {
+  pointer-events: none;
+  opacity: 0.8;
+}
+
+/* --- Log Stream --- */
+.log-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+
+.log-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.log-header-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.log-header-title .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--success);
+  animation: daemonPulse 2s ease-in-out infinite;
+}
+
+.log-header-title .dot.disconnected {
+  background: var(--text-muted);
+  animation: none;
+}
+
+.log-actions { display: flex; gap: 8px; }
+
+.log-terminal {
+  background: #0d1117;
+  min-height: 280px;
+  max-height: 420px;
+  overflow-y: auto;
+  padding: 12px 16px;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  line-height: 1.7;
+  color: #c9d1d9;
+}
+
+.log-terminal::-webkit-scrollbar { width: 6px; }
+.log-terminal::-webkit-scrollbar-track { background: transparent; }
+.log-terminal::-webkit-scrollbar-thumb { background: #30363d; border-radius: 3px; }
+
+.log-line { white-space: pre-wrap; word-break: break-all; }
+.log-line .ts { color: #6e7681; margin-right: 8px; }
+.log-line.success { color: #3fb950; }
+.log-line.error { color: #f85149; }
+.log-line.info { color: #58a6ff; }
+.log-line.warning { color: #d29922; }
+
+.log-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: #6e7681;
+  font-style: italic;
+}
+
+/* --- Schedules --- */
+.sched-section {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.sched-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sched-header h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.sched-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.sched-table th {
+  text-align: left;
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sched-table td {
+  padding: 10px 16px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.sched-table tr:last-child td { border-bottom: none; }
+.sched-table tr:hover td { background: var(--bg-card-hover); }
+
+.sched-form {
+  display: none;
+  padding: 16px 20px;
+  border-top: 1px solid var(--border-color);
+  gap: 12px;
+  align-items: flex-end;
+}
+
+.sched-form.show { display: flex; flex-wrap: wrap; }
+
+.sched-form .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.sched-form .form-group label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+}
+
+.sched-form select,
+.sched-form input[type="text"] {
+  padding: 7px 12px;
+  font-size: 0.82rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  min-width: 160px;
+}
+
+.sched-form select:focus,
+.sched-form input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-muted);
+}
+
+.sched-empty {
+  text-align: center;
+  padding: 24px;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+}
+
+@keyframes daemonPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+</style>
+{% endblock %}
+
+{% block page_title %}Scan Controls{% endblock %}
+{% block page_subtitle %}Trigger scans and manage schedules{% endblock %}
+
+{% block content %}
+<!-- Scan Grid -->
+<div class="scan-grid" id="scanGrid">
+</div>
+
+<!-- Live Log Stream -->
+<div class="log-section">
+  <div class="log-header">
+    <div class="log-header-title">
+      <span class="dot disconnected" id="logDot"></span>
+      Live Scan Log
+    </div>
+    <div class="log-actions">
+      <button class="btn btn-xs btn-outline" id="logPauseBtn" title="Pause auto-scroll">
+        <i class="bi bi-pause-fill"></i> Pause
+      </button>
+      <button class="btn btn-xs btn-outline" id="logClearBtn" title="Clear log">
+        <i class="bi bi-trash3"></i> Clear
+      </button>
+    </div>
+  </div>
+  <div class="log-terminal" id="logTerminal">
+    <div class="log-empty" id="logEmpty">Waiting for scan output...</div>
+  </div>
+</div>
+
+<!-- Scheduled Scans -->
+<div class="sched-section">
+  <div class="sched-header">
+    <h3><i class="bi bi-calendar-week"></i> Scheduled Scans</h3>
+    <button class="btn btn-sm btn-primary" id="addSchedBtn">
+      <i class="bi bi-plus-lg"></i> Add Schedule
+    </button>
+  </div>
+  <div class="sched-form" id="schedForm">
+    <div class="form-group">
+      <label>Scan Type</label>
+      <select id="schedType">
+        <option value="discover">Discovery</option>
+        <option value="scan">TCP Scan</option>
+        <option value="udpscan">UDP Scan</option>
+        <option value="fingerprint">OS Fingerprint</option>
+        <option value="tls">TLS Inspection</option>
+        <option value="enumerate">Service Enum</option>
+        <option value="nuclei">Nuclei</option>
+        <option value="full">Full Pipeline</option>
+        <option value="servicescan">Service Scan</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>Cron Expression</label>
+      <input type="text" id="schedCron" placeholder="0 */4 * * *" autocomplete="off">
+    </div>
+    <button class="btn btn-sm btn-success" id="schedSaveBtn">
+      <i class="bi bi-check-lg"></i> Save
+    </button>
+    <button class="btn btn-sm btn-outline" id="schedCancelBtn">Cancel</button>
+  </div>
+  <div class="table-container" style="overflow-x:auto;">
+    <table class="sched-table">
+      <thead>
+        <tr>
+          <th>Type</th>
+          <th>Cron</th>
+          <th>Next Run</th>
+          <th>Status</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="schedBody">
+        <tr><td colspan="5" class="sched-empty">No scheduled scans configured</td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  'use strict';
+
+  // --- Scan Card Definitions ---
+  var SCANS = [
+    { type: 'discover', title: 'Discovery', desc: '12 techniques: nmap, ARP, mDNS, NBNS, passive sniff', icon: 'bi-search', cls: 'discovery' },
+    { type: 'scan', title: 'TCP Scan', desc: 'Stealth port scanning with adaptive throttle', icon: 'bi-ethernet', cls: 'tcp' },
+    { type: 'udpscan', title: 'UDP Scan', desc: 'DNS, SNMP, NTP, SSDP protocol probes', icon: 'bi-broadcast', cls: 'udp' },
+    { type: 'fingerprint', title: 'OS Fingerprint', desc: 'Passive + active OS identification', icon: 'bi-cpu', cls: 'os' },
+    { type: 'tls', title: 'TLS Inspection', desc: 'Certificate, cipher, and protocol analysis', icon: 'bi-shield-lock', cls: 'tls' },
+    { type: 'enumerate', title: 'Service Enum', desc: 'SMB, LDAP, Redis, Docker enumeration', icon: 'bi-list-columns-reverse', cls: 'enum' },
+    { type: 'nuclei', title: 'Nuclei', desc: 'Rate-limited vulnerability scanning', icon: 'bi-bug', cls: 'nuclei' },
+    { type: 'full', title: 'Full Pipeline', desc: 'Complete reconnaissance pipeline run', icon: 'bi-arrow-repeat', cls: 'full' },
+    { type: 'servicescan', title: 'Service Scan', desc: 'Deep nmap -sV version detection', icon: 'bi-fingerprint', cls: 'svc' }
+  ];
+
+  var scanStatus = {};
+
+  function renderScanGrid() {
+    var grid = document.getElementById('scanGrid');
+    var html = '';
+    SCANS.forEach(function(s) {
+      var st = scanStatus[s.type] || {};
+      var isRunning = st.status === 'running';
+      var lastRun = st.last_run ? formatTime(st.last_run) : 'Never';
+
+      html += '<div class="scan-card" data-type="' + s.type + '">' +
+        '<div class="scan-card-head">' +
+          '<div class="scan-card-icon ' + s.cls + '"><i class="bi ' + s.icon + '"></i></div>' +
+          '<div class="scan-card-info">' +
+            '<div class="scan-card-title">' + s.title + '</div>' +
+            '<div class="scan-card-desc">' + s.desc + '</div>' +
+          '</div>' +
+        '</div>' +
+        '<div class="scan-card-footer">' +
+          '<span class="scan-card-last"><i class="bi bi-clock"></i> ' + lastRun + '</span>' +
+          '<button class="btn btn-sm btn-primary btn-run' + (isRunning ? ' running' : '') + '" data-type="' + s.type + '">' +
+            (isRunning ? '<span class="spinner"></span> Running' : '<i class="bi bi-play-fill"></i> Run') +
+          '</button>' +
+        '</div>' +
+      '</div>';
+    });
+    grid.innerHTML = html;
+  }
+
+  // --- Trigger Scan ---
+  document.getElementById('scanGrid').addEventListener('click', function(e) {
+    var btn = e.target.closest('.btn-run');
+    if (!btn || btn.classList.contains('running')) return;
+
+    var scanType = btn.getAttribute('data-type');
+    btn.classList.add('running');
+    btn.innerHTML = '<span class="spinner"></span> Starting...';
+
+    fetch('/api/scan/trigger', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scan_type: scanType })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) {
+        showToast(data.error, 'error');
+        btn.classList.remove('running');
+        btn.innerHTML = '<i class="bi bi-play-fill"></i> Run';
+      } else {
+        showToast((data.message || scanType + ' started'), 'success');
+        btn.innerHTML = '<span class="spinner"></span> Running';
+        pollScanStatusOnce();
+      }
+    })
+    .catch(function() {
+      showToast('Failed to trigger scan', 'error');
+      btn.classList.remove('running');
+      btn.innerHTML = '<i class="bi bi-play-fill"></i> Run';
+    });
+  });
+
+  // --- Poll scan status ---
+  function pollScanStatusOnce() {
+    fetch('/api/scan/status')
+      .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function(data) {
+        var scans = data.scans || data;
+        scanStatus = scans;
+        updateRunningStates(scans);
+      })
+      .catch(function() {});
+  }
+
+  function updateRunningStates(scans) {
+    SCANS.forEach(function(s) {
+      var card = document.querySelector('.scan-card[data-type="' + s.type + '"]');
+      if (!card) return;
+      var btn = card.querySelector('.btn-run');
+      var st = scans[s.type] || {};
+      var isRunning = (typeof st === 'string') ? st === 'running' : (st.status === 'running');
+      var lastRun = (typeof st === 'object' && st.last_run) ? formatTime(st.last_run) : null;
+
+      if (isRunning) {
+        btn.classList.add('running');
+        btn.innerHTML = '<span class="spinner"></span> Running';
+      } else {
+        btn.classList.remove('running');
+        btn.innerHTML = '<i class="bi bi-play-fill"></i> Run';
+      }
+
+      if (lastRun) {
+        var lastEl = card.querySelector('.scan-card-last');
+        if (lastEl) lastEl.innerHTML = '<i class="bi bi-clock"></i> ' + lastRun;
+      }
+    });
+  }
+
+  renderScanGrid();
+  pollScanStatusOnce();
+  var scanStatusTimer = setInterval(pollScanStatusOnce, 5000);
+  // Pause status polling when the tab is hidden
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      if (scanStatusTimer) { clearInterval(scanStatusTimer); scanStatusTimer = null; }
+    } else if (!scanStatusTimer) {
+      pollScanStatusOnce();
+      scanStatusTimer = setInterval(pollScanStatusOnce, 5000);
+    }
+  });
+
+  // --- SSE Log Stream ---
+  var logTerminal = document.getElementById('logTerminal');
+  var logEmpty = document.getElementById('logEmpty');
+  var logDot = document.getElementById('logDot');
+  var logPaused = false;
+  var logLines = 0;
+  var MAX_LOG_LINES = 500;
+  var evtSource = null;
+
+  function connectSSE() {
+    if (evtSource) { try { evtSource.close(); } catch(e) {} }
+
+    evtSource = new EventSource('/api/scan/logs');
+
+    evtSource.onopen = function() {
+      logDot.classList.remove('disconnected');
+    };
+
+    evtSource.onmessage = function(e) {
+      var msg = e.data;
+      if (!msg || msg === ':keepalive') return;
+      appendLog(msg);
+    };
+
+    evtSource.onerror = function() {
+      logDot.classList.add('disconnected');
+      // Reconnect after 5s
+      setTimeout(function() {
+        if (evtSource.readyState === EventSource.CLOSED) {
+          connectSSE();
+        }
+      }, 5000);
+    };
+  }
+
+  function appendLog(text) {
+    if (logEmpty) { logEmpty.remove(); }
+
+    // Parse color prefix
+    var cls = '';
+    if (text.indexOf('[+]') !== -1) cls = 'success';
+    else if (text.indexOf('[-]') !== -1) cls = 'error';
+    else if (text.indexOf('[*]') !== -1) cls = 'info';
+    else if (text.indexOf('[!]') !== -1) cls = 'warning';
+
+    var now = new Date();
+    var ts = ('0' + now.getHours()).slice(-2) + ':' +
+             ('0' + now.getMinutes()).slice(-2) + ':' +
+             ('0' + now.getSeconds()).slice(-2);
+
+    var line = document.createElement('div');
+    line.className = 'log-line' + (cls ? ' ' + cls : '');
+    line.innerHTML = '<span class="ts">' + ts + '</span>' + escapeHtml(text);
+
+    logTerminal.appendChild(line);
+    logLines++;
+
+    // Trim old lines
+    while (logLines > MAX_LOG_LINES) {
+      var first = logTerminal.querySelector('.log-line');
+      if (first) { first.remove(); logLines--; }
+      else break;
+    }
+
+    // Auto-scroll
+    if (!logPaused) {
+      logTerminal.scrollTop = logTerminal.scrollHeight;
+    }
+  }
+
+  document.getElementById('logPauseBtn').addEventListener('click', function() {
+    logPaused = !logPaused;
+    this.innerHTML = logPaused
+      ? '<i class="bi bi-play-fill"></i> Resume'
+      : '<i class="bi bi-pause-fill"></i> Pause';
+  });
+
+  document.getElementById('logClearBtn').addEventListener('click', function() {
+    logTerminal.innerHTML = '<div class="log-empty">Log cleared</div>';
+    logLines = 0;
+  });
+
+  connectSSE();
+
+  // --- Schedules ---
+  var schedForm = document.getElementById('schedForm');
+  var addSchedBtn = document.getElementById('addSchedBtn');
+  var schedCancelBtn = document.getElementById('schedCancelBtn');
+  var schedSaveBtn = document.getElementById('schedSaveBtn');
+  var schedBody = document.getElementById('schedBody');
+
+  addSchedBtn.addEventListener('click', function() {
+    schedForm.classList.toggle('show');
+  });
+
+  schedCancelBtn.addEventListener('click', function() {
+    schedForm.classList.remove('show');
+  });
+
+  schedSaveBtn.addEventListener('click', function() {
+    var type = document.getElementById('schedType').value;
+    var cron = document.getElementById('schedCron').value.trim();
+    if (!cron) { showToast('Cron expression required', 'warning'); return; }
+
+    fetch('/api/schedule', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ scan_type: type, cron: cron })
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      if (data.error) { showToast(data.error, 'error'); return; }
+      showToast('Schedule created', 'success');
+      schedForm.classList.remove('show');
+      document.getElementById('schedCron').value = '';
+      loadSchedules();
+    })
+    .catch(function() { showToast('Failed to create schedule', 'error'); });
+  });
+
+  function loadSchedules() {
+    fetch('/api/schedule')
+      .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+      .then(function(data) {
+        var jobs = data.schedules || data || [];
+        if (!Array.isArray(jobs) || jobs.length === 0) {
+          schedBody.innerHTML = '<tr><td colspan="5" class="sched-empty">No scheduled scans configured</td></tr>';
+          return;
+        }
+        var html = '';
+        jobs.forEach(function(job) {
+          var enabled = job.enabled !== false;
+          html += '<tr data-id="' + (job.id || '') + '">' +
+            '<td><strong>' + escapeHtml(job.scan_type || job.type || '--') + '</strong></td>' +
+            '<td><code style="font-size:0.78rem;">' + escapeHtml(job.cron || '--') + '</code></td>' +
+            '<td>' + (job.next_run ? formatTime(job.next_run) : '--') + '</td>' +
+            '<td>' +
+              '<label class="toggle">' +
+                '<input type="checkbox"' + (enabled ? ' checked' : '') + ' onchange="window._toggleSched(\'' + job.id + '\')">' +
+                '<span class="toggle-track"></span>' +
+              '</label>' +
+            '</td>' +
+            '<td>' +
+              '<button class="btn btn-xs btn-danger" onclick="window._deleteSched(\'' + job.id + '\')" title="Delete">' +
+                '<i class="bi bi-trash3"></i>' +
+              '</button>' +
+            '</td>' +
+          '</tr>';
+        });
+        schedBody.innerHTML = html;
+      })
+      .catch(function() {});
+  }
+
+  window._toggleSched = function(id) {
+    fetch('/api/schedule/' + id + '/toggle', { method: 'POST' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) showToast(data.error, 'error');
+        else showToast('Schedule toggled', 'info');
+        loadSchedules();
+      })
+      .catch(function() { showToast('Toggle failed', 'error'); });
+  };
+
+  window._deleteSched = function(id) {
+    if (!confirm('Delete this schedule?')) return;
+    fetch('/api/schedule/' + id, { method: 'DELETE' })
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.error) showToast(data.error, 'error');
+        else showToast('Schedule deleted', 'success');
+        loadSchedules();
+      })
+      .catch(function() { showToast('Delete failed', 'error'); });
+  };
+
+  loadSchedules();
+
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', function() {
+    if (evtSource) evtSource.close();
+  });
+})();
+</script>
+{% endblock %}

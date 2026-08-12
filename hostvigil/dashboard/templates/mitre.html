@@ -1,0 +1,144 @@
+{% extends "base.html" %}
+{% block title %}MITRE ATT&CK — HostVigil{% endblock %}
+{% block page_title %}MITRE ATT&CK Coverage{% endblock %}
+{% block page_subtitle %}Map discovered findings to ATT&CK tactics and techniques with coverage intensity{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-ghost" id="mitreRefresh" onclick="loadMitre()">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.mitre-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:0.4rem;}
+.mitre-cell{padding:0.5rem 0.7rem;border-radius:var(--radius-sm);font-size:0.73rem;border:1px solid var(--border-light);transition:all var(--transition);cursor:pointer;position:relative;overflow:hidden;}
+.mitre-cell:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm);z-index:1;}
+.mitre-cell .tech-id{font-family:var(--font-mono);font-weight:650;font-size:0.65rem;opacity:0.7;margin-bottom:2px;}
+.mitre-tactic{font-size:0.85rem;font-weight:650;padding:0.6rem 0.2rem 0.4rem;border-bottom:2px solid var(--primary);margin-bottom:0.5rem;color:var(--text-heading);display:flex;align-items:center;gap:0.5rem;}
+.mitre-tactic .tactic-count{font-size:0.65rem;color:var(--text-muted);font-weight:400;}
+.heat-0{background:var(--bg-body);color:var(--text-muted);border-style:dashed;}
+.heat-1{background:var(--info-light);color:var(--info);border-color:rgba(0,207,232,0.2);}
+.heat-2{background:var(--warning-light);color:var(--warning);border-color:rgba(255,159,67,0.25);}
+.heat-3{background:var(--danger-light);color:var(--danger);border-color:rgba(234,84,85,0.25);font-weight:500;}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Coverage Summary -->
+<div class="row mb-4">
+    <div class="col-4">
+        <div class="metric-tile animate-fade-in-up">
+            <span class="metric-value" id="mitre-techniques">—</span>
+            <span class="metric-label"><i class="bi bi-braces me-1"></i>Techniques Mapped</span>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.05s;">
+            <span class="metric-value" id="mitre-tactics">—</span>
+            <span class="metric-label"><i class="bi bi-grid-3x3-gap me-1"></i>Tactics Covered</span>
+        </div>
+    </div>
+    <div class="col-4">
+        <div class="metric-tile animate-fade-in-up" style="animation-delay:0.1s;">
+            <span class="metric-value" id="mitre-hits">—</span>
+            <span class="metric-label"><i class="bi bi-crosshair me-1"></i>Total Mappings</span>
+        </div>
+    </div>
+</div>
+
+<div class="card animate-fade-in-scale">
+    <div class="card-header">
+        <div>
+            <h5 class="card-title"><i class="bi bi-grid-3x3-gap-fill text-danger me-2"></i> Technique Heatmap</h5>
+            <span class="card-subtitle">Color intensity reflects evidence count per technique</span>
+        </div>
+        <div class="d-flex gap-3 align-center flex-wrap">
+            <div class="d-flex align-center gap-1"><div class="status-dot" style="background:var(--danger);"></div><span class="text-xs text-muted">High (3+)</span></div>
+            <div class="d-flex align-center gap-1"><div class="status-dot" style="background:var(--warning);"></div><span class="text-xs text-muted">Medium (1-2)</span></div>
+            <div class="d-flex align-center gap-1"><div class="status-dot" style="background:var(--info);"></div><span class="text-xs text-muted">Low (1)</span></div>
+        </div>
+    </div>
+    <div class="card-body" id="mitreContent">
+        <div class="text-center" style="padding:4rem;">
+            <span class="spinner" style="border-width:3px;width:28px;height:28px;margin:0 auto 1rem;"></span>
+            <p class="text-sm text-muted">Loading MITRE ATT&CK coverage data...</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    window.loadMitre = function() {
+        var btn = document.getElementById('mitreRefresh');
+        if (btn) btn.disabled = true;
+
+        fetch('/api/mitre/coverage').then(function(r){return r.json();}).then(function(data){
+            var el = document.getElementById('mitreContent');
+            var tactics = data.tactics || data.coverage || [];
+            var techniques = data.techniques || [];
+
+            var techCount = techniques.length;
+            var tacticCount = tactics.length;
+            var hitCount = techniques.length;
+            if (!techCount && tactics.length) {
+                techCount = 0;
+                hitCount = 0;
+                tactics.forEach(function(tac) {
+                    (tac.techniques || []).forEach(function(t) {
+                        techCount++;
+                        hitCount += (t.hits || 0);
+                    });
+                });
+            }
+            document.getElementById('mitre-techniques').textContent = techCount;
+            document.getElementById('mitre-tactics').textContent = tacticCount;
+            document.getElementById('mitre-hits').textContent = hitCount;
+
+            if (techniques.length && !tactics.length) {
+                var flat = '<div class="mitre-grid">';
+                techniques.forEach(function(t) {
+                    var heat = t.confidence >= 0.7 ? 'heat-3' : t.confidence >= 0.4 ? 'heat-2' : 'heat-1';
+                    flat += '<div class="mitre-cell ' + heat + '"><div class="tech-id">' + escapeHtml(t.technique_id) + '</div><div>' + escapeHtml(t.technique_name) + '</div></div>';
+                });
+                flat += '</div>';
+                el.innerHTML = flat;
+                return;
+            }
+
+            if (!tactics.length) {
+                el.innerHTML = '<div class="empty-state"><i class="bi bi-grid-3x3-gap-fill"></i><h4>No MITRE data yet</h4><p class="text-sm">Run scans to map discovered vulnerabilities to the ATT&CK framework.</p></div>';
+                return;
+            }
+
+            var html = '';
+            tactics.forEach(function(tac) {
+                var techs = tac.techniques || [];
+                html += '<div class="mitre-tactic">' + escapeHtml(tac.name) + ' <span class="tactic-count">' + techs.length + ' techniques</span></div>';
+                html += '<div class="mitre-grid">';
+                techs.forEach(function(t) {
+                    var heat = t.hits >= 3 ? 'heat-3' : t.hits >= 2 ? 'heat-2' : t.hits >= 1 ? 'heat-1' : 'heat-0';
+                    html += '<div class="mitre-cell ' + heat + '" title="' + escapeAttr(t.name || '') + ' — ' + (t.hits || 0) + ' hits">';
+                    html += '<div class="tech-id">' + escapeHtml(t.id || 'T????') + '</div>';
+                    html += '<div class="truncate">' + escapeHtml(t.name || 'Unknown') + '</div>';
+                    html += '</div>';
+                });
+                html += '</div>';
+            });
+            el.innerHTML = html || '<p class="text-muted">No technique mappings available</p>';
+        }).catch(function(){
+            document.getElementById('mitreContent').innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle"></i><h4>Failed to load</h4><p class="text-sm">Unable to fetch MITRE coverage data.</p></div>';
+        }).finally(function(){
+            if (btn) btn.disabled = false;
+        });
+    };
+
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
+    function escapeAttr(s) { return (s == null ? '' : String(s)).replace(/"/g, '&quot;'); }
+
+    window.loadMitre();
+})();
+</script>
+{% endblock %}

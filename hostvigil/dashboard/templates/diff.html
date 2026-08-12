@@ -1,0 +1,187 @@
+{% extends "base.html" %}
+{% block title %}Changes — HostVigil{% endblock %}
+{% block page_title %}Network Changes{% endblock %}
+{% block page_subtitle %}Compare snapshots over time to see hosts, ports, and services appear or disappear across your scope.{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-ghost" onclick="loadDiff()" title="Refresh">
+    <i class="bi bi-arrow-clockwise"></i>
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.diff-card { transition: all 0.3s ease; }
+.diff-card:hover { transform: translateY(-2px); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="card mb-4 animate-fade-in-scale">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="bi bi-arrow-left-right text-primary"></i> Change Detection</div>
+            <div class="card-subtitle">Select a lookback window to review what shifted on the network</div>
+        </div>
+        <span class="text-sm" id="diffSummary" style="color:var(--text-heading);font-weight:550;">
+            <i class="bi bi-arrow-repeat me-1"></i> Loading changes...
+        </span>
+    </div>
+    <div class="card-body d-flex align-center gap-3 flex-wrap">
+        <label class="form-label mb-0 me-2" style="font-size:0.85rem;">Lookback period:</label>
+        <select class="form-control" id="diffHours" style="width:auto;" onchange="loadDiff()">
+            <option value="1">1 hour</option>
+            <option value="6">6 hours</option>
+            <option value="12">12 hours</option>
+            <option value="24" selected>24 hours</option>
+            <option value="48">48 hours</option>
+            <option value="168">7 days</option>
+        </select>
+        <div class="flex-1"></div>
+        <span class="text-xs text-muted"><i class="bi bi-clock-history me-1"></i> Compared against the previous snapshot</span>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-6 col-lg-12 mb-3">
+        <div class="card diff-card animate-fade-in-up" style="animation-delay:0.1s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-plus-circle-fill text-success"></i> New Hosts</div>
+                    <div class="card-subtitle">Assets discovered in this window</div>
+                </div>
+                <span class="badge badge-success badge-pill" id="newHostCount">—</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-wrapper" style="max-height:320px;overflow-y:auto;">
+                    <table class="table table-sm">
+                        <thead><tr><th>IP Address</th><th>Hostname</th><th>Discovery Method</th></tr></thead>
+                        <tbody id="newHostsBody">
+                            {% for i in range(4) %}
+                            <tr><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:120px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:90px;display:inline-block;"></span></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-12 mb-3">
+        <div class="card diff-card animate-fade-in-up" style="animation-delay:0.15s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-dash-circle-fill text-danger"></i> Disappeared Hosts</div>
+                    <div class="card-subtitle">Assets no longer responding</div>
+                </div>
+                <span class="badge badge-danger badge-pill" id="goneHostCount">—</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-wrapper" style="max-height:320px;overflow-y:auto;">
+                    <table class="table table-sm">
+                        <thead><tr><th>IP Address</th><th>Hostname</th><th>Last Seen</th></tr></thead>
+                        <tbody id="goneHostsBody">
+                            {% for i in range(4) %}
+                            <tr><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:120px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:90px;display:inline-block;"></span></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-6 col-lg-12 mb-3">
+        <div class="card diff-card animate-fade-in-up" style="animation-delay:0.2s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-plus-circle-fill text-info"></i> New Ports</div>
+                    <div class="card-subtitle">Newly opened services</div>
+                </div>
+                <span class="badge badge-info badge-pill" id="newPortCount">—</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-wrapper" style="max-height:320px;overflow-y:auto;">
+                    <table class="table table-sm">
+                        <thead><tr><th>Host</th><th>Port</th><th>Service</th></tr></thead>
+                        <tbody id="newPortsBody">
+                            {% for i in range(4) %}
+                            <tr><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:60px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:90px;display:inline-block;"></span></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-12 mb-3">
+        <div class="card diff-card animate-fade-in-up" style="animation-delay:0.25s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-dash-circle-fill text-warning"></i> Closed Ports</div>
+                    <div class="card-subtitle">Services that went offline</div>
+                </div>
+                <span class="badge badge-warning badge-pill" id="closedPortCount">—</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-wrapper" style="max-height:320px;overflow-y:auto;">
+                    <table class="table table-sm">
+                        <thead><tr><th>Host</th><th>Port</th><th>Service</th></tr></thead>
+                        <tbody id="closedPortsBody">
+                            {% for i in range(4) %}
+                            <tr><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:60px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:90px;display:inline-block;"></span></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+function escapeHtml(s) {
+    return String(s == null ? '' : s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+function loadDiff(){
+    var hours=document.getElementById('diffHours').value;
+    var prefix = 'Changes in last ' + hours + 'h: ';
+    document.getElementById('diffSummary').innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> Loading...';
+    fetch('/api/diff?hours='+hours).then(function(r){return r.json();}).then(function(data){
+        var s=data.summary||{};
+        var nh = s.new_hosts_count||0, np = s.new_ports_count||0, dh = s.disappeared_count||0, cp = s.closed_ports_count||0;
+        var parts = [];
+        if (nh > 0) parts.push('<span class="text-success font-bold">+' + nh + ' hosts</span>');
+        if (np > 0) parts.push('<span class="text-info font-bold">+' + np + ' ports</span>');
+        if (dh > 0) parts.push('<span class="text-danger font-bold">-' + dh + ' hosts</span>');
+        if (cp > 0) parts.push('<span class="text-warning font-bold">-' + cp + ' ports</span>');
+        if (!parts.length) parts.push('<span class="text-muted">No changes</span>');
+        document.getElementById('diffSummary').innerHTML = '<i class="bi bi-arrow-repeat me-1"></i> ' + prefix + parts.join(' &middot; ');
+
+        document.getElementById('newHostCount').textContent=nh;
+        document.getElementById('goneHostCount').textContent=dh;
+        document.getElementById('newPortCount').textContent=np;
+        document.getElementById('closedPortCount').textContent=cp;
+
+        renderList('newHostsBody',data.new_hosts||[],function(h){return '<td class="font-mono text-sm font-bold">'+escapeHtml(h.ip)+'</td><td class="text-sm">'+escapeHtml(h.hostname||'—')+'</td><td class="text-xs text-muted">'+escapeHtml(h.discovery_method||'—')+'</td>';});
+        renderList('goneHostsBody',data.disappeared_hosts||[],function(h){return '<td class="font-mono text-sm font-bold">'+escapeHtml(h.ip)+'</td><td class="text-sm">'+escapeHtml(h.hostname||'—')+'</td><td class="text-xs text-muted">'+(h.last_seen ? formatTime(h.last_seen) : '—')+'</td>';});
+        renderList('newPortsBody',data.new_ports||[],function(p){return '<td class="font-mono text-sm"><a href=\"/host/'+encodeURIComponent(p.ip||'')+'\">'+escapeHtml(p.ip)+'</a></td><td class="font-mono font-bold">'+escapeHtml(p.port)+'/'+escapeHtml(p.protocol||'tcp')+'</td><td class="text-sm">'+escapeHtml(p.service||'—')+'</td>';});
+        renderList('closedPortsBody',data.closed_ports||[],function(p){return '<td class="font-mono text-sm"><a href=\"/host/'+encodeURIComponent(p.ip||'')+'\">'+escapeHtml(p.ip)+'</a></td><td class="font-mono font-bold">'+escapeHtml(p.port)+'/'+escapeHtml(p.protocol||'tcp')+'</td><td class="text-sm">'+escapeHtml(p.service||'—')+'</td>';});
+    }).catch(function(){document.getElementById('diffSummary').innerHTML='<i class="bi bi-exclamation-triangle text-danger me-1"></i> Failed to load diff data';});
+}
+function renderList(id,items,fn){
+    var tbody=document.getElementById(id);
+    if(!items||!items.length){tbody.innerHTML='<tr><td colspan="3"><div class="empty-state py-3"><i class="bi bi-check-circle"></i><p class="text-sm">None</p></div></td></tr>';return;}
+    tbody.innerHTML=items.slice(0,80).map(function(i){return '<tr style="animation:fadeInUp 0.2s ease;">'+fn(i)+'</tr>';}).join('');
+}
+loadDiff();
+</script>
+{% endblock %}

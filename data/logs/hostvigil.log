@@ -1,0 +1,210 @@
+2026-08-04T02:56:33+0530 | INFO     | hostvigil.discovery._prioritize_local_subnets | Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-04T02:56:33+0530 | INFO     | hostvigil.discovery.__init__ | StealthDiscovery initialized: techniques=['nmap_discover', 'nbns_query', 'mdns_enum', 'ssdp_discover', 'tcp_syn_discover'], targets=['10.0.0.0/8']
+2026-08-04T02:56:33+0530 | INFO     | hostvigil.scanner.__init__ | StealthScanner initialized: scan_type=connect, threads=15, connect_timeout=0.50s, banner_timeout=2.00s, inter_port_delay=150ms, two_phase=True, delay=0.5-3.0s
+2026-08-04T02:56:33+0530 | INFO     | hostvigil.ml_engine._load_model | No saved model found - starting in rule-based mode
+2026-08-04T02:56:33+0530 | INFO     | hostvigil.orchestrator.__init__ | HostVigil Orchestrator initialized (db=/root/HostVigil/data/hostvigil.db)
+2026-08-04T02:56:33+0530 | INFO     | hostvigil.orchestrator._run_naabu_scan | naabu: scanning 1 hosts, ports=22,80,443
+2026-08-04T02:56:35+0530 | INFO     | hostvigil.orchestrator._run_naabu_scan | naabu: found 1 open ports on 1 hosts
+2026-08-06T17:13:07.317Z bidhata-Alienware hostvigil[72690] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:13:07.317Z bidhata-Alienware hostvigil[72690] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:13:07.317Z bidhata-Alienware hostvigil[72690] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:13:07.317Z bidhata-Alienware hostvigil[72690] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:13:07.317Z bidhata-Alienware hostvigil[72690] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:13:07.320Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:13:07.320Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:13:07.320Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:13:07.320Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:13:07.320Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_smoke.db)
+2026-08-06T17:13:07.321Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:13:07.321Z bidhata-Alienware hostvigil[72690] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:20:08.690Z bidhata-Alienware hostvigil[72734] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:20:08.690Z bidhata-Alienware hostvigil[72734] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:20:08.690Z bidhata-Alienware hostvigil[72734] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:20:08.690Z bidhata-Alienware hostvigil[72734] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:20:08.690Z bidhata-Alienware hostvigil[72734] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:20:08.693Z bidhata-Alienware hostvigil[72734] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:20:08.693Z bidhata-Alienware hostvigil[72734] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:20:08.693Z bidhata-Alienware hostvigil[72734] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:20:08.693Z bidhata-Alienware hostvigil[72734] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:20:08.693Z bidhata-Alienware hostvigil[72734] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_guard.db)
+2026-08-06T17:20:18.367Z bidhata-Alienware hostvigil[72740] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:20:18.368Z bidhata-Alienware hostvigil[72740] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:20:18.368Z bidhata-Alienware hostvigil[72740] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:20:18.368Z bidhata-Alienware hostvigil[72740] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:20:18.368Z bidhata-Alienware hostvigil[72740] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_dbg.db)
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:20:18.371Z bidhata-Alienware hostvigil[72740] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:20:29.773Z bidhata-Alienware hostvigil[72744] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:20:29.773Z bidhata-Alienware hostvigil[72744] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:20:29.773Z bidhata-Alienware hostvigil[72744] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:20:29.773Z bidhata-Alienware hostvigil[72744] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:20:29.773Z bidhata-Alienware hostvigil[72744] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:20:29.776Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:20:29.777Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:20:29.777Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:20:29.777Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:20:29.777Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_dbg2.db)
+2026-08-06T17:20:29.777Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:20:29.777Z bidhata-Alienware hostvigil[72744] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:20:41.361Z bidhata-Alienware hostvigil[72752] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:20:41.362Z bidhata-Alienware hostvigil[72752] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:20:41.362Z bidhata-Alienware hostvigil[72752] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:20:41.362Z bidhata-Alienware hostvigil[72752] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:20:41.362Z bidhata-Alienware hostvigil[72752] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:20:41.364Z bidhata-Alienware hostvigil[72752] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:20:41.365Z bidhata-Alienware hostvigil[72752] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:20:41.365Z bidhata-Alienware hostvigil[72752] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:20:41.365Z bidhata-Alienware hostvigil[72752] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:20:41.365Z bidhata-Alienware hostvigil[72752] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_guard.db)
+2026-08-06T17:20:53.144Z bidhata-Alienware hostvigil[72759] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:20:53.144Z bidhata-Alienware hostvigil[72759] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:20:53.145Z bidhata-Alienware hostvigil[72759] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:20:53.145Z bidhata-Alienware hostvigil[72759] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:20:53.145Z bidhata-Alienware hostvigil[72759] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:20:53.148Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:20:53.148Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:20:53.148Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:20:53.148Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:20:53.148Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_dbg3.db)
+2026-08-06T17:20:53.148Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:20:53.149Z bidhata-Alienware hostvigil[72759] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:21:02.260Z bidhata-Alienware hostvigil[72762] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:21:02.260Z bidhata-Alienware hostvigil[72762] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:21:02.260Z bidhata-Alienware hostvigil[72762] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:21:02.260Z bidhata-Alienware hostvigil[72762] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:21:02.260Z bidhata-Alienware hostvigil[72762] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:21:02.263Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:21:02.263Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:21:02.263Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:21:02.263Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:21:02.263Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_dbg4.db)
+2026-08-06T17:21:02.263Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:21:02.264Z bidhata-Alienware hostvigil[72762] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:21:13.680Z bidhata-Alienware hostvigil[72769] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:21:13.681Z bidhata-Alienware hostvigil[72769] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:21:13.681Z bidhata-Alienware hostvigil[72769] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:21:13.681Z bidhata-Alienware hostvigil[72769] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:21:13.681Z bidhata-Alienware hostvigil[72769] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:21:13.683Z bidhata-Alienware hostvigil[72769] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:21:13.683Z bidhata-Alienware hostvigil[72769] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:21:13.683Z bidhata-Alienware hostvigil[72769] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:21:13.683Z bidhata-Alienware hostvigil[72769] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:21:13.684Z bidhata-Alienware hostvigil[72769] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_guard.db)
+2026-08-06T17:21:25.411Z bidhata-Alienware hostvigil[72776] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:21:25.411Z bidhata-Alienware hostvigil[72776] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:21:25.412Z bidhata-Alienware hostvigil[72776] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:21:25.412Z bidhata-Alienware hostvigil[72776] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:21:25.412Z bidhata-Alienware hostvigil[72776] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:21:25.414Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:21:25.415Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:21:25.415Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:21:25.415Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:21:25.415Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_dbg5.db)
+2026-08-06T17:21:25.415Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:21:25.415Z bidhata-Alienware hostvigil[72776] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:21:37.061Z bidhata-Alienware hostvigil[72783] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:21:37.061Z bidhata-Alienware hostvigil[72783] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:21:37.061Z bidhata-Alienware hostvigil[72783] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:21:37.061Z bidhata-Alienware hostvigil[72783] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:21:37.061Z bidhata-Alienware hostvigil[72783] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:21:37.064Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:21:37.064Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:21:37.064Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:21:37.064Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:21:37.064Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_dbg6.db)
+2026-08-06T17:21:37.065Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:21:37.065Z bidhata-Alienware hostvigil[72783] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:21:51.220Z bidhata-Alienware hostvigil[72790] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:21:51.220Z bidhata-Alienware hostvigil[72790] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:21:51.220Z bidhata-Alienware hostvigil[72790] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:21:51.221Z bidhata-Alienware hostvigil[72790] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:21:51.221Z bidhata-Alienware hostvigil[72790] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:21:51.223Z bidhata-Alienware hostvigil[72790] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:21:51.223Z bidhata-Alienware hostvigil[72790] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:21:51.223Z bidhata-Alienware hostvigil[72790] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:21:51.223Z bidhata-Alienware hostvigil[72790] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:21:51.223Z bidhata-Alienware hostvigil[72790] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_guard.db)
+2026-08-06T17:22:04.005Z bidhata-Alienware hostvigil[72797] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-06T17:22:04.006Z bidhata-Alienware hostvigil[72797] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '192.168.1.0/24']
+2026-08-06T17:22:04.006Z bidhata-Alienware hostvigil[72797] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-06T17:22:04.006Z bidhata-Alienware hostvigil[72797] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-06T17:22:04.006Z bidhata-Alienware hostvigil[72797] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_guard.db)
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] WARNING hostvigil.orchestrator Phase 'tls_inspection' still running from a previous cycle (deadline exceeded) — skipping to avoid overlap
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator Shutdown requested
+2026-08-06T17:22:04.009Z bidhata-Alienware hostvigil[72797] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-06T17:22:04.011Z bidhata-Alienware hostvigil[72797] WARNING hostvigil.report_generator Some tables missing, using simplified host query: no such table: service_enumeration
+2026-08-06T17:22:04.012Z bidhata-Alienware hostvigil[72797] WARNING hostvigil.report_generator Some tables missing, using simplified host query: no such table: service_enumeration
+2026-08-12T16:26:45.493Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T16:26:45.493Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24']
+2026-08-12T16:26:45.493Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T16:26:45.493Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T16:26:45.493Z bidhata-Alienware hostvigil[1731329] WARNING hostvigil.nuclei Nuclei binary 'nuclei' not found in PATH — vulnerability scanning unavailable
+2026-08-12T16:26:45.497Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T16:26:45.497Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T16:26:45.497Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T16:26:45.497Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T16:26:45.497Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_smoke__372kkp6/test.db)
+2026-08-12T16:26:45.571Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator HostVigil daemon started - continuous mode (Nuclei excluded)
+2026-08-12T16:26:45.571Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Daemon cycle #1 starting
+2026-08-12T16:26:45.572Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Starting discovery phase
+2026-08-12T16:26:45.572Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.discovery Starting discovery run with techniques: ['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom']
+2026-08-12T16:26:45.572Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.discovery Running technique: nmap_discover
+2026-08-12T16:26:45.572Z bidhata-Alienware hostvigil[1731329] WARNING hostvigil.discovery nmap not found in PATH - skipping nmap discovery
+2026-08-12T16:26:50.695Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.discovery Technique 'nmap_discover' found 0 hosts
+2026-08-12T16:26:53.529Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Received signal SIGTERM
+2026-08-12T16:26:53.529Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator Shutdown requested
+2026-08-12T16:26:53.529Z bidhata-Alienware hostvigil[1731329] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-12T17:07:26.024Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T17:07:26.024Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24']
+2026-08-12T17:07:26.024Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T17:07:26.024Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T17:07:26.024Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.nuclei Nuclei binary resolved to /usr/local/bin/nuclei
+2026-08-12T17:07:26.028Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T17:07:26.028Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T17:07:26.028Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T17:07:26.028Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T17:07:26.028Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_crash_2a618w04/test.db)
+2026-08-12T17:07:26.100Z bidhata-Alienware hostvigil[1775255] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5998
+2026-08-12T17:08:04.272Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T17:08:04.272Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24']
+2026-08-12T17:08:04.272Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T17:08:04.272Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T17:08:04.272Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.nuclei Nuclei binary resolved to /usr/local/bin/nuclei
+2026-08-12T17:08:04.274Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T17:08:04.274Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T17:08:04.274Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T17:08:04.274Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T17:08:04.274Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_real_zbw_ya_0/test.db)
+2026-08-12T17:08:04.344Z bidhata-Alienware hostvigil[1775650] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5996
+2026-08-12T17:09:33.282Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T17:09:33.282Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24']
+2026-08-12T17:09:33.282Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T17:09:33.283Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T17:09:33.283Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.nuclei Nuclei binary resolved to /usr/local/bin/nuclei
+2026-08-12T17:09:33.285Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T17:09:33.285Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T17:09:33.285Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T17:09:33.285Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T17:09:33.285Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_verify_cq1oaufs/test.db)
+2026-08-12T17:09:33.355Z bidhata-Alienware hostvigil[1776634] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5995
+2026-08-12T17:23:33.681Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T17:23:33.681Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24']
+2026-08-12T17:23:33.681Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T17:23:33.682Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T17:23:33.682Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.nuclei Nuclei binary resolved to /usr/local/bin/nuclei
+2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_fe_nmh65ujb/test.db)
+2026-08-12T17:23:33.758Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5994

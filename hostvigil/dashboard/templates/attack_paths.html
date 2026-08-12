@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Attack Paths — HostVigil{% endblock %}
+{% block page_title %}Attack Paths{% endblock %}
+{% block page_subtitle %}Reconstructed attack chains from initial access to objective — step by step{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-ghost" id="apRefresh" onclick="loadAttackPaths()">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.flow-step .chip { max-width: 220px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="cursor:pointer;">
+            <div class="stat-icon danger"><i class="bi bi-bullseye"></i></div>
+            <div class="stat-content"><h3 id="ap-risk">0</h3><p>Risk Score</p></div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.05s;cursor:pointer;">
+            <div class="stat-icon warning"><i class="bi bi-door-open-fill"></i></div>
+            <div class="stat-content"><h3 id="ap-initial">0</h3><p>Initial Access Vectors</p></div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.1s;cursor:pointer;">
+            <div class="stat-icon primary"><i class="bi bi-arrows-move"></i></div>
+            <div class="stat-content"><h3 id="ap-lateral">0</h3><p>Lateral Movement</p></div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.15s;cursor:pointer;">
+            <div class="stat-icon info"><i class="bi bi-link-45deg"></i></div>
+            <div class="stat-content"><h3 id="ap-chains">0</h3><p>Attack Chains</p></div>
+        </div>
+    </div>
+</div>
+
+<div class="card animate-fade-in-up" style="animation-delay:0.2s;">
+    <div class="card-header">
+        <div>
+            <h5 class="card-title"><i class="bi bi-diagram-3-fill text-danger me-2"></i> Attack Chain Flow</h5>
+            <span class="card-subtitle">Reconstructed technique sequences — each chain flows from access vector toward objective</span>
+        </div>
+    </div>
+    <div class="card-body p-3">
+        <div class="list-group" id="chainsBody">
+            {% for i in range(4) %}
+            <div class="list-row" style="flex-direction:column;align-items:stretch;">
+                <div class="d-flex align-center gap-2"><span class="skeleton skeleton-text" style="width:90px;"></span><span class="skeleton skeleton-text short" style="width:60px;"></span></div>
+                <div class="d-flex align-center gap-2"><span class="skeleton skeleton-text medium" style="width:180px;"></span><span class="skeleton skeleton-text short" style="width:24px;"></span></div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    var fetchInFlight = false;
+
+    window.loadAttackPaths = function() {
+        if (fetchInFlight) return;
+        fetchInFlight = true;
+        var btn = document.getElementById('apRefresh');
+        if (btn) btn.disabled = true;
+
+        fetch('/api/attack-paths').then(function(r){return r.json();}).then(function(data){
+            document.getElementById('ap-risk').textContent = Math.round(data.risk_score || 0) + '/100';
+            document.getElementById('ap-initial').textContent = (data.initial_access||[]).length;
+            document.getElementById('ap-lateral').textContent = (data.lateral_movement||[]).length;
+            document.getElementById('ap-chains').textContent = (data.attack_chains||[]).length;
+
+            var chains = data.attack_chains || [];
+            var el = document.getElementById('chainsBody');
+            if(!chains.length){
+                el.innerHTML = '<div class="empty-state"><i class="bi bi-shield-check"></i><h4>No attack chains identified</h4><p class="text-sm">Run more scans to build the graph and identify attack paths.</p></div>';
+                return;
+            }
+            var html = '';
+            chains.slice(0, 30).forEach(function(c, i) {
+                var steps = c.steps || [];
+                var sev = c.severity || 'medium';
+                var sevBadge = (sev === 'critical' || sev === 'high') ? 'danger' : (sev === 'medium' ? 'warning' : 'secondary');
+                var flow = '';
+                steps.forEach(function(s, si) {
+                    if (si > 0) flow += '<i class="bi bi-arrow-down-right text-muted" style="font-size:0.9rem;flex-shrink:0;"></i>';
+                    flow += '<span class="chip"><i class="bi bi-record-circle me-1" style="font-size:0.6rem;"></i>' + escapeHtml(s.technique || s.name || '?') + '</span>';
+                });
+                html += '<div class="list-row animate-fade-in-up" style="flex-direction:column;align-items:stretch;gap:0.65rem;animation-delay:' + (i * 0.05) + 's;">';
+                html += '<div class="d-flex align-center gap-2 flex-wrap">';
+                html += '<span class="badge badge-' + sevBadge + ' badge-pill"><i class="bi bi-exclamation-triangle-fill me-1" style="font-size:0.6rem;"></i>' + escapeHtml(sev) + '</span>';
+                html += '<span class="text-xs text-muted">' + steps.length + ' step' + (steps.length === 1 ? '' : 's') + '</span>';
+                html += '</div>';
+                html += '<div class="d-flex align-center flex-wrap gap-1">' + (flow || '<span class="text-xs text-muted">No technique steps mapped</span>') + '</div>';
+                html += '</div>';
+            });
+            el.innerHTML = html;
+        }).catch(function(){
+            document.getElementById('chainsBody').innerHTML = '<div class="empty-state"><i class="bi bi-exclamation-triangle text-danger"></i><h4>Failed to load</h4><p class="text-sm">Unable to fetch attack path data.</p></div>';
+        }).finally(function(){
+            fetchInFlight = false;
+            if (btn) btn.disabled = false;
+        });
+    };
+
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
+
+    window.loadAttackPaths();
+})();
+</script>
+{% endblock %}

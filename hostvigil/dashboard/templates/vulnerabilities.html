@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+
+{% block title %}Vulnerabilities — HostVigil{% endblock %}
+{% block page_title %}Vulnerabilities{% endblock %}
+{% block page_subtitle %}Every confirmed finding across your targets, ranked by severity and enriched with host context.{% endblock %}
+
+{% block page_actions %}
+<a class="btn btn-sm btn-outline-secondary" href="/api/export/csv" title="Export findings to CSV">
+    <i class="bi bi-download me-1"></i> Export
+</a>
+<button class="btn btn-sm btn-ghost" onclick="loadVulns()" title="Refresh">
+    <i class="bi bi-arrow-clockwise"></i>
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.vuln-row { cursor: pointer; transition: all 0.15s ease; }
+.vuln-row:hover { background: var(--bg-table-hover); }
+.sev-card { cursor: pointer; position: relative; }
+.sev-card-active { border-color: var(--primary) !important; box-shadow: 0 0 20px var(--primary-glow) !important; }
+.sev-pct { position:absolute; top:12px; right:12px; font-size:0.65rem; }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Severity Summary Cards -->
+<div class="row mb-2" id="sevCards">
+    <div class="col-3 col-md-6 col-sm-12">
+        <div class="stat-card sev-card animate-fade-in-up" id="card-critical" onclick="filterSev('critical')">
+            <div class="stat-icon danger"><i class="bi bi-exclamation-octagon-fill"></i></div>
+            <div class="stat-content"><h3 id="cnt-critical">0</h3><p>Critical</p></div>
+            <span class="badge badge-danger badge-pill sev-pct" id="pct-critical">0%</span>
+        </div>
+    </div>
+    <div class="col-3 col-md-6 col-sm-12">
+        <div class="stat-card sev-card animate-fade-in-up" style="animation-delay:0.05s;" id="card-high" onclick="filterSev('high')">
+            <div class="stat-icon warning"><i class="bi bi-exclamation-triangle-fill"></i></div>
+            <div class="stat-content"><h3 id="cnt-high">0</h3><p>High</p></div>
+            <span class="badge badge-warning badge-pill sev-pct" id="pct-high">0%</span>
+        </div>
+    </div>
+    <div class="col-3 col-md-6 col-sm-12">
+        <div class="stat-card sev-card animate-fade-in-up" style="animation-delay:0.1s;" id="card-medium" onclick="filterSev('medium')">
+            <div class="stat-icon info"><i class="bi bi-exclamation-circle-fill"></i></div>
+            <div class="stat-content"><h3 id="cnt-medium">0</h3><p>Medium</p></div>
+            <span class="badge badge-info badge-pill sev-pct" id="pct-medium">0%</span>
+        </div>
+    </div>
+    <div class="col-3 col-md-6 col-sm-12">
+        <div class="stat-card sev-card animate-fade-in-up" style="animation-delay:0.15s;" id="card-total" onclick="filterSev('')">
+            <div class="stat-icon secondary-l"><i class="bi bi-shield-fill"></i></div>
+            <div class="stat-content"><h3 id="cnt-total">0</h3><p>All Findings</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- Vulnerabilities Table -->
+<div class="card animate-fade-in-up" style="animation-delay:0.2s;">
+    <div class="card-header">
+        <div>
+            <div class="card-title"><i class="bi bi-shield-exclamation text-danger"></i> Vulnerability Inventory</div>
+            <div class="card-subtitle"><i class="bi bi-bug me-1"></i> Findings from Nuclei and manual review</div>
+        </div>
+        <span class="text-xs text-muted" id="vulnCount"><i class="bi bi-bug me-1"></i> Loading...</span>
+    </div>
+    <div class="table-toolbar">
+        <div class="header-search search-input">
+            <i class="bi bi-search"></i>
+            <input type="text" id="vulnSearch" placeholder="Search by name, host, or template..." autocomplete="off">
+        </div>
+        <select class="form-control" id="sevFilter" style="width:auto;min-width:140px;">
+            <option value="">All Severities</option>
+            <option value="critical">Critical</option>
+            <option value="high">High</option>
+            <option value="medium">Medium</option>
+            <option value="low">Low</option>
+            <option value="info">Info</option>
+        </select>
+        <select class="form-control" id="sortBy" style="width:auto;min-width:130px;" onchange="renderTable()">
+            <option value="severity">Sort by Severity</option>
+            <option value="host">Sort by Host</option>
+            <option value="name">Sort by Name</option>
+        </select>
+        <div class="flex-1"></div>
+        <button class="btn btn-sm btn-ghost" onclick="loadVulns()" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+    </div>
+    <div class="table-wrapper" style="max-height:calc(100vh - 340px);overflow-y:auto;">
+        <table class="table">
+            <thead>
+                <tr><th style="width:90px;">Severity</th><th>Name</th><th>Host</th><th style="width:70px;">Port</th><th>Template</th><th>Evidence</th></tr>
+            </thead>
+            <tbody id="vulnTableBody">
+                {% for i in range(8) %}
+                <tr><td><span class="skeleton skeleton-row" style="width:70px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:180px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:35px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:120px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:140px;display:inline-block;"></span></td></tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    <div class="pagination">
+        <span class="pagination-info text-xs" id="displayInfo"></span>
+        <span class="text-xs text-muted">Showing first 200 results &mdash; use search or filters to narrow down</span>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var allVulns = [];
+    var searchTimeout = null;
+    var activeFilter = '';
+
+    function loadVulns() {
+        fetch('/api/vulnerabilities')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                allVulns = data.vulnerabilities || [];
+                updateCounts();
+                renderTable();
+            })
+            .catch(function() {
+                document.getElementById('vulnTableBody').innerHTML = '<tr><td colspan="6" class="text-center" style="padding:3rem;"><i class="bi bi-exclamation-triangle text-danger" style="font-size:2rem;display:block;opacity:0.5;margin-bottom:0.5rem;"></i>Failed to load vulnerabilities. <button class="btn btn-sm btn-ghost mt-2" onclick="loadVulns()"><i class="bi bi-arrow-clockwise"></i> Retry</button></td></tr>';
+            });
+    }
+
+    function updateCounts() {
+        var counts = {critical: 0, high: 0, medium: 0, low: 0, info: 0};
+        allVulns.forEach(function(v) { var s = (v.severity || 'info').toLowerCase(); counts[s] = (counts[s] || 0) + 1; });
+        var total = allVulns.length;
+
+        animateCount('cnt-critical', counts.critical);
+        animateCount('cnt-high', counts.high);
+        animateCount('cnt-medium', counts.medium);
+        animateCount('cnt-total', total);
+
+        if (total > 0) {
+            document.getElementById('pct-critical').textContent = Math.round(counts.critical / total * 100) + '%';
+            document.getElementById('pct-high').textContent = Math.round(counts.high / total * 100) + '%';
+            document.getElementById('pct-medium').textContent = Math.round(counts.medium / total * 100) + '%';
+        }
+
+        // Highlight active card
+        document.querySelectorAll('.sev-card').forEach(function(c) { c.classList.remove('sev-card-active'); });
+        if (activeFilter) {
+            var activeCard = document.getElementById('card-' + activeFilter);
+            if (activeCard) activeCard.classList.add('sev-card-active');
+        }
+    }
+
+    function animateCount(id, val) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var cur = parseInt(el.textContent) || 0;
+        if (cur === val) { el.textContent = val.toLocaleString(); return; }
+        var s = null;
+        function step(t) { if (!s) s = t; var p = Math.min((t - s) / 500, 1); el.textContent = Math.round(cur + (val - cur) * (1 - Math.pow(1 - p, 3))).toLocaleString(); if (p < 1) requestAnimationFrame(step); }
+        requestAnimationFrame(step);
+    }
+
+    function renderTable() {
+        var search = document.getElementById('vulnSearch').value.toLowerCase();
+        var sev = document.getElementById('sevFilter').value;
+        var sort = document.getElementById('sortBy').value;
+
+        activeFilter = sev;
+
+        var filtered = allVulns.filter(function(v) {
+            if (sev && (v.severity || 'info').toLowerCase() !== sev) return false;
+            if (search) {
+                var text = ((v.name || '') + ' ' + (v.ip || '') + ' ' + (v.template_id || '')).toLowerCase();
+                if (text.indexOf(search) === -1) return false;
+            }
+            return true;
+        });
+
+        // Sort
+        var sevOrder = {critical: 0, high: 1, medium: 2, low: 3, info: 4};
+        if (sort === 'severity') {
+            filtered.sort(function(a, b) { return (sevOrder[(a.severity||'info').toLowerCase()] || 5) - (sevOrder[(b.severity||'info').toLowerCase()] || 5); });
+        } else if (sort === 'host') {
+            filtered.sort(function(a, b) { return (a.ip || '').localeCompare(b.ip || ''); });
+        } else if (sort === 'name') {
+            filtered.sort(function(a, b) { return (a.name || '').localeCompare(b.name || ''); });
+        }
+
+        document.getElementById('vulnCount').innerHTML = '<i class="bi bi-bug me-1"></i> ' + filtered.length.toLocaleString() + ' / ' + allVulns.length.toLocaleString();
+        document.getElementById('displayInfo').textContent = 'Displaying ' + Math.min(filtered.length, 200).toLocaleString() + ' results';
+
+        var tbody = document.getElementById('vulnTableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="bi bi-shield-check"></i><h4>No vulnerabilities found</h4><p class="text-sm">' + (allVulns.length > 0 ? 'Try adjusting your filters.' : 'Run a Nuclei scan to discover vulnerabilities.') + '</p></div></td></tr>';
+            return;
+        }
+
+        var display = filtered.slice(0, 200);
+        var html = '';
+        display.forEach(function(v, i) {
+            var sev = (v.severity || 'info').toLowerCase();
+            var sevBadge = getSevBadge(sev);
+            var sevIcon = sev === 'critical' ? 'bi-exclamation-octagon-fill' : sev === 'high' ? 'bi-exclamation-triangle-fill' : sev === 'medium' ? 'bi-exclamation-circle-fill' : 'bi-info-circle-fill';
+            var evidence = (v.evidence || '').substring(0, 120);
+
+            html += '<tr class="vuln-row" style="animation:fadeInUp 0.25s ease;animation-delay:' + (i * 0.015) + 's;animation-fill-mode:both;" onclick="window.location.href=\'/host/' + encodeURIComponent(v.ip || '') + '\'">';
+            html += '<td><span class="badge badge-' + sevBadge + ' badge-pill"><i class="bi ' + sevIcon + ' me-1" style="font-size:0.65rem;"></i>' + escapeHtml(sev) + '</span></td>';
+            html += '<td class="text-sm font-bold" title="' + escapeAttr(v.name || '') + '">' + escapeHtml(v.name || 'Unknown') + '</td>';
+            html += '<td class="font-mono text-sm"><a href="/host/' + encodeURIComponent(v.ip || '') + '" onclick="event.stopPropagation();">' + escapeHtml(v.ip || '—') + '</a></td>';
+            html += '<td class="font-mono text-sm text-center">' + escapeHtml(v.port || '—') + '</td>';
+            html += '<td class="text-xs text-muted truncate" style="max-width:150px;" title="' + escapeAttr(v.template_id || '') + '">' + escapeHtml(v.template_id || '—') + '</td>';
+            html += '<td class="text-xs text-muted truncate" style="max-width:200px;" title="' + escapeAttr(v.evidence || '') + '">' + escapeHtml(evidence || '—') + '</td>';
+            html += '</tr>';
+        });
+
+        if (filtered.length > 200) {
+            html += '<tr><td colspan="6" class="text-center text-muted text-xs" style="padding:0.75rem;background:var(--bg-body-solid);"><i class="bi bi-info-circle me-1"></i> Showing 200 of ' + filtered.length.toLocaleString() + ' results. Use search or filters to refine.</td></tr>';
+        }
+        tbody.innerHTML = html;
+    }
+
+    window.filterSev = function(sev) {
+        document.getElementById('sevFilter').value = sev;
+        renderTable();
+    };
+
+    window.loadVulns = loadVulns;
+
+    document.getElementById('vulnSearch').addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(renderTable, 200);
+    });
+    document.getElementById('sevFilter').addEventListener('change', renderTable);
+
+    function escapeAttr(s) { return (s || '').replace(/"/g, '&quot;').replace(/</g, '&lt;'); }
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    loadVulns();
+})();
+</script>
+{% endblock %}

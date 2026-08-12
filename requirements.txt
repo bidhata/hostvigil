@@ -1,0 +1,23 @@
+# HostVigil - Dependencies (pinned)
+# No bloat. No telemetry. No cloud dependencies.
+
+# === Core ===
+flask==3.1.3
+pyyaml==6.0.3
+numpy>=1.26,<3.0
+
+# === Network Scanning ===
+scapy==2.7.0                  # Raw packet crafting (ARP, SYN, passive sniff)
+paramiko==5.0.0               # SSH credential testing
+ldap3==2.9.1                  # Active Directory discovery (LDAP queries)
+dnspython==2.7.0              # DNS recon (PTR walk, AXFR, cache snooping)
+aiohttp==3.11.11              # Async credential checking (HTTP/HTTPS)
+
+# === Machine Learning ===
+scikit-learn>=1.3,<2.0           # IsolationForest, GradientBoosting anomaly detection
+
+# === Scheduling ===
+APScheduler==3.11.3           # Cron-based scan scheduling
+
+# === System (optional but recommended) ===
+psutil==7.2.2                 # Network interface auto-detection

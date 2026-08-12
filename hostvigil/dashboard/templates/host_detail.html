@@ -1,0 +1,530 @@
+{% extends "base.html" %}
+
+{% block title %}{{ host.ip }} — HostVigil{% endblock %}
+{% block page_title %}Host: {{ host.ip }}{% endblock %}
+{% block page_subtitle %}{{ host.hostname or 'No hostname' }} &middot; {{ host.os_fingerprint or 'Unknown OS' }}{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-outline-primary" onclick="quickScan('scan')">
+    <i class="bi bi-ethernet"></i> Scan Ports
+</button>
+<button class="btn btn-sm btn-outline-danger" onclick="quickScan('nuclei')">
+    <i class="bi bi-bug"></i> Nuclei
+</button>
+<button class="btn btn-sm btn-ghost" onclick="window.location.reload()" title="Refresh page">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.detail-card { border-left: 3px solid transparent; transition: all 0.2s; }
+.detail-card:hover { border-left-color: var(--primary); transform: translateY(-2px); }
+.tab-content { padding: 1.5rem 0; display: block !important; }
+.tab-pane { display: none; padding: 0; }
+.tab-pane.active { display: block; }
+.copy-btn { opacity: 0; transition: opacity 0.2s; }
+.ip-row:hover .copy-btn { opacity: 1; }
+.host-meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.meta-item { padding: 10px 14px; background: var(--bg-input); border-radius: var(--radius-md); border: 1px solid var(--border-color); }
+.meta-item .meta-label { font-size: 0.7rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); margin-bottom: 3px; }
+.meta-item .meta-value { font-size: 0.85rem; color: var(--text-primary); word-break: break-all; }
+.port-row { transition: background 0.15s; }
+.port-row:hover { background: var(--bg-card-hover); }
+.port-number { font-size: 0.9rem; font-weight: 700; color: var(--primary); }
+.svc-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; font-size: 0.72rem; font-weight: 600; border-radius: var(--radius-full); background: var(--primary-muted); color: var(--primary); }
+.cpe-text { font-size: 0.72rem; color: var(--text-muted); font-family: var(--font-mono); }
+.tag-chip { display: inline-flex; align-items: center; gap: 4px; padding: 3px 10px; font-size: 0.75rem; font-weight: 500; border-radius: var(--radius-full); background: var(--primary-muted); color: var(--primary); margin: 2px; }
+.finding-card { padding: 12px 16px; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 8px; transition: border-color 0.2s; }
+.finding-card:hover { border-color: var(--primary); }
+.finding-card.critical { border-left: 3px solid var(--danger); }
+.finding-card.high { border-left: 3px solid var(--warning); }
+.finding-card.medium { border-left: 3px solid var(--info); }
+.timeline-item { position: relative; padding-left: 24px; padding-bottom: 16px; border-left: 2px solid var(--border-color); }
+.timeline-item:last-child { border-left-color: transparent; }
+.timeline-item::before { content: ''; position: absolute; left: -5px; top: 4px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); border: 2px solid var(--bg-card); }
+.credential-row.success { background: rgba(234, 84, 85, 0.05); }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Host Identity Card -->
+<div class="card mb-4 animate-fade-in-scale">
+    <div class="card-body">
+        <div class="d-flex align-center gap-4 flex-wrap mb-3">
+            <div class="stat-icon {{ 'success' if host.is_active else 'secondary' }}" style="width:60px;height:60px;font-size:1.7rem;">
+                <i class="bi bi-hdd-network"></i>
+            </div>
+            <div class="flex-1 ip-row" style="min-width:240px;">
+                <div class="d-flex align-center gap-2 mb-1">
+                    <h3 class="mb-0 font-mono">{{ host.ip }}</h3>
+                    <button class="btn btn-ghost btn-sm copy-btn" onclick="copyToClipboard('{{ host.ip }}')" title="Copy IP">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                    <span class="badge {{ 'badge-success' if host.is_active else 'badge-secondary' }} badge-pill ms-2">
+                        <span class="status-dot {{ 'online' if host.is_active else 'offline' }} me-1"></span>
+                        {{ 'Active' if host.is_active else 'Inactive' }}
+                    </span>
+                </div>
+                <p class="text-sm text-muted mb-0">
+                    {{ host.hostname or 'No hostname' }}
+                    {% if host.os_fingerprint %} &middot; {{ host.os_fingerprint }}{% endif %}
+                    {% if host.mac %} &middot; <span class="font-mono">{{ host.mac }}</span>{% endif %}
+                </p>
+            </div>
+            {% if tags %}
+            <div class="d-flex flex-wrap" style="max-width:300px;">
+                {% for t in tags %}
+                <span class="tag-chip"><i class="bi bi-tag-fill" style="font-size:0.65rem;"></i> {{ t.tag }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Host metadata grid -->
+        <div class="host-meta">
+            <div class="meta-item">
+                <div class="meta-label">Discovery Method</div>
+                <div class="meta-value">{{ host.discovery_method or '—' }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">First Seen</div>
+                <div class="meta-value">{{ host.first_seen[:16] if host.first_seen else '—' }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">Last Seen</div>
+                <div class="meta-value">{{ host.last_seen[:16] if host.last_seen else '—' }}</div>
+            </div>
+            <div class="meta-item">
+                <div class="meta-label">OS Confidence</div>
+                <div class="meta-value">
+                    {% if host.os_confidence %}
+                    <div class="d-flex align-center gap-2">
+                        <div class="progress" style="width:60px;height:5px;"><div class="progress-bar success" style="width:{{ (host.os_confidence * 100)|int }}%"></div></div>
+                        <span class="text-xs font-mono">{{ '%d'|format(host.os_confidence * 100) }}%</span>
+                    </div>
+                    {% else %}—{% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mb-4">
+    <div class="col-3">
+        <div class="stat-card detail-card animate-fade-in-up">
+            <div class="stat-icon info"><i class="bi bi-ethernet"></i></div>
+            <div class="stat-content">
+                <h3>{{ ports|length }}</h3>
+                <p>Open Ports</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card detail-card animate-fade-in-up" style="animation-delay:0.05s;">
+            <div class="stat-icon danger"><i class="bi bi-shield-exclamation"></i></div>
+            <div class="stat-content">
+                <h3>{{ vulns|length }}</h3>
+                <p>Vulnerabilities</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card detail-card animate-fade-in-up" style="animation-delay:0.1s;">
+            <div class="stat-icon warning"><i class="bi bi-server"></i></div>
+            <div class="stat-content">
+                <h3>{{ services|length }}</h3>
+                <p>Service Findings</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card detail-card animate-fade-in-up" style="animation-delay:0.15s;">
+            <div class="stat-icon primary"><i class="bi bi-lock-fill"></i></div>
+            <div class="stat-content">
+                <h3>{{ tls|length }}</h3>
+                <p>TLS Certs</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabbed Content -->
+<div class="card animate-fade-in-up" style="animation-delay:0.2s;">
+    <div class="card-header">
+        <div>
+            <h5 class="card-title"><i class="bi bi-pie-chart-fill text-primary me-2"></i> Host Intelligence</h5>
+            <span class="card-subtitle">Complete reconnaissance data for this target</span>
+        </div>
+    </div>
+    <div class="tabs" id="hostTabs">
+        <button class="tab-item active" data-tab="ports">
+            <i class="bi bi-ethernet me-1"></i> Ports <span class="badge badge-info badge-pill ms-1" style="font-size:0.62rem;">{{ ports|length }}</span>
+        </button>
+        <button class="tab-item" data-tab="services">
+            <i class="bi bi-server me-1"></i> Services <span class="badge badge-warning badge-pill ms-1" style="font-size:0.62rem;">{{ services|length }}</span>
+        </button>
+        <button class="tab-item" data-tab="vulns">
+            <i class="bi bi-shield-exclamation me-1"></i> Vulns <span class="badge badge-danger badge-pill ms-1" style="font-size:0.62rem;">{{ vulns|length }}</span>
+        </button>
+        <button class="tab-item" data-tab="tls">
+            <i class="bi bi-lock-fill me-1"></i> TLS <span class="badge badge-success badge-pill ms-1" style="font-size:0.62rem;">{{ tls|length }}</span>
+        </button>
+        <button class="tab-item" data-tab="creds">
+            <i class="bi bi-key-fill me-1"></i> Creds <span class="badge badge-danger badge-pill ms-1" style="font-size:0.62rem;">{{ credentials|length }}</span>
+        </button>
+        <button class="tab-item" data-tab="anomalies">
+            <i class="bi bi-graph-up-arrow me-1"></i> Anomalies <span class="badge badge-warning badge-pill ms-1" style="font-size:0.62rem;">{{ anomalies|length }}</span>
+        </button>
+        <button class="tab-item" data-tab="timeline">
+            <i class="bi bi-clock-history me-1"></i> Timeline
+        </button>
+    </div>
+
+    <div class="tab-content" style="padding:1.25rem;">
+
+        <!-- Ports Tab -->
+        <div class="tab-pane active" id="tab-ports">
+            {% if ports %}
+            <div class="table-wrapper">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th style="width:70px;">Port</th>
+                            <th style="width:60px;">Proto</th>
+                            <th>Service</th>
+                            <th>Product / Version</th>
+                            <th>CPE</th>
+                            <th>Banner</th>
+                            <th style="width:80px;">Seen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    {% for p in ports %}
+                    <tr class="port-row" style="animation:fadeInUp 0.2s ease;animation-delay:{{ loop.index0 * 0.02 }}s;animation-fill-mode:both;">
+                        <td><span class="port-number">{{ p.port }}</span></td>
+                        <td><span class="badge badge-info badge-pill">{{ p.protocol or 'tcp' }}</span></td>
+                        <td>
+                            {% if p.service %}
+                            <span class="svc-badge">{{ p.service }}</span>
+                            {% else %}—{% endif %}
+                        </td>
+                        <td class="text-sm">
+                            {% if p.product %}<span class="font-bold">{{ p.product }}</span>{% endif %}
+                            {% if p.version %}<span class="font-mono text-muted"> {{ p.version }}</span>{% endif %}
+                            {% if not p.product and not p.version %}—{% endif %}
+                        </td>
+                        <td>{% if p.cpe %}<span class="cpe-text">{{ p.cpe }}</span>{% else %}—{% endif %}</td>
+                        <td class="text-xs text-muted" style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ p.banner or '' }}">{{ p.banner or '—' }}</td>
+                        <td class="text-xs text-muted">{{ p.last_seen[:10] if p.last_seen else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-ethernet"></i>
+                <h4>No open ports found</h4>
+                <p>Run a port scan to discover open services on this host.</p>
+                <button class="btn btn-sm btn-primary mt-2" onclick="quickScan('scan')"><i class="bi bi-ethernet me-1"></i> Scan Now</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Services Tab -->
+        <div class="tab-pane" id="tab-services">
+            {% if services %}
+            {% for s in services %}
+            <div class="finding-card {{ (s.severity or 'info')|lower }}" style="animation:fadeInUp 0.2s ease;animation-delay:{{ loop.index0 * 0.03 }}s;animation-fill-mode:both;">
+                <div class="d-flex align-center justify-between mb-1">
+                    <div class="d-flex align-center gap-2">
+                        {% set sev = (s.severity or 'info')|lower %}
+                        <span class="badge badge-{{ 'danger' if sev in ('critical','high') else 'warning' if sev == 'medium' else 'info' }} badge-pill">{{ sev }}</span>
+                        <span class="font-bold text-sm">{{ s.title or s.finding_type or 'Finding' }}</span>
+                    </div>
+                    <span class="text-xs text-muted">{{ s.service_type or '' }} {% if s.port %}:{{ s.port }}{% endif %}</span>
+                </div>
+                {% if s.details %}
+                <p class="text-sm text-muted mb-1" style="margin-top:6px;">{{ s.details }}</p>
+                {% endif %}
+                {% if s.findings %}
+                <pre class="text-xs font-mono" style="margin:6px 0 0;padding:8px 10px;background:var(--bg-input);border-radius:var(--radius-sm);overflow-x:auto;max-height:120px;">{{ s.findings }}</pre>
+                {% endif %}
+                {% if s.enumerated_at %}
+                <span class="text-xs text-muted" style="display:block;margin-top:6px;"><i class="bi bi-clock me-1"></i>{{ s.enumerated_at[:16] }}</span>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-server"></i>
+                <h4>No service findings</h4>
+                <p>Service enumeration checks for SMB null sessions, anonymous LDAP, exposed Redis/Docker/Elasticsearch, and more.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Vulnerabilities Tab -->
+        <div class="tab-pane" id="tab-vulns">
+            {% if vulns %}
+            <div class="table-wrapper">
+                <table class="table table-sm">
+                    <thead><tr><th>Severity</th><th>Name</th><th>Port</th><th>Template</th><th>Evidence</th></tr></thead>
+                    <tbody>
+                    {% for v in vulns %}
+                    <tr class="port-row" style="animation:fadeInUp 0.2s ease;animation-delay:{{ loop.index0 * 0.02 }}s;animation-fill-mode:both;">
+                        {% set sev = (v.severity or 'info')|lower %}
+                        <td>
+                            <span class="badge badge-{{ 'danger' if sev in ('critical','high') else 'warning' if sev == 'medium' else 'info' }} badge-pill">
+                                {{ sev }}
+                            </span>
+                        </td>
+                        <td class="text-sm font-bold">{{ v.name }}</td>
+                        <td class="font-mono text-sm">{{ v.port or '—' }}/{{ v.protocol or 'tcp' }}</td>
+                        <td class="text-xs font-mono text-muted">{{ v.template_id or '—' }}</td>
+                        <td class="text-xs text-muted" style="max-width:250px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="{{ v.evidence or '' }}">{{ v.evidence or '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-shield-check"></i>
+                <h4>No vulnerabilities found</h4>
+                <p>Run Nuclei to scan for known vulnerabilities on this host.</p>
+                <button class="btn btn-sm btn-danger mt-2" onclick="quickScan('nuclei')"><i class="bi bi-bug me-1"></i> Run Nuclei</button>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- TLS Tab -->
+        <div class="tab-pane" id="tab-tls">
+            {% if tls %}
+            {% for t in tls %}
+            <div class="finding-card {{ 'critical' if t.is_expired or t.weak_cipher else '' }}" style="animation:fadeInUp 0.2s ease;animation-delay:{{ loop.index0 * 0.03 }}s;animation-fill-mode:both;">
+                <div class="d-flex align-center justify-between mb-2">
+                    <div class="d-flex align-center gap-2">
+                        <span class="port-number">:{{ t.port or 443 }}</span>
+                        <span class="font-bold text-sm">{{ t.subject or 'Unknown' }}</span>
+                    </div>
+                    <div class="d-flex gap-1">
+                        {% if t.is_expired %}<span class="badge badge-danger badge-pill"><i class="bi bi-x-circle me-1"></i>Expired</span>{% endif %}
+                        {% if t.is_self_signed %}<span class="badge badge-warning badge-pill">Self-Signed</span>{% endif %}
+                        {% if t.weak_cipher %}<span class="badge badge-danger badge-pill">Weak Cipher</span>{% endif %}
+                        {% if not t.is_expired and not t.weak_cipher %}<span class="badge badge-success badge-pill"><i class="bi bi-check me-1"></i>Valid</span>{% endif %}
+                    </div>
+                </div>
+                <div class="host-meta" style="margin-top:8px;">
+                    <div class="meta-item">
+                        <div class="meta-label">Issuer</div>
+                        <div class="meta-value text-xs">{{ t.issuer or '—' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Valid From</div>
+                        <div class="meta-value text-xs">{{ t.not_before or '—' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Valid Until</div>
+                        <div class="meta-value text-xs {{ 'text-danger' if t.is_expired else '' }}">{{ t.not_after or '—' }}</div>
+                    </div>
+                    <div class="meta-item">
+                        <div class="meta-label">Key</div>
+                        <div class="meta-value text-xs">{{ t.key_type or '' }} {{ t.key_size or t.key_bits or '' }} bits</div>
+                    </div>
+                    {% if t.protocol_version %}
+                    <div class="meta-item">
+                        <div class="meta-label">Protocol</div>
+                        <div class="meta-value text-xs">{{ t.protocol_version }}</div>
+                    </div>
+                    {% endif %}
+                    {% if t.cipher_suite %}
+                    <div class="meta-item">
+                        <div class="meta-label">Cipher Suite</div>
+                        <div class="meta-value text-xs font-mono">{{ t.cipher_suite }}</div>
+                    </div>
+                    {% endif %}
+                </div>
+                {% if t.san_names or t.san_domains %}
+                <div style="margin-top:8px;">
+                    <span class="meta-label">SANs: </span>
+                    <span class="text-xs text-muted">{{ t.san_names or t.san_domains or '—' }}</span>
+                </div>
+                {% endif %}
+                {% if t.weaknesses %}
+                <div style="margin-top:8px;padding:6px 10px;background:var(--danger-muted);border-radius:var(--radius-sm);">
+                    <span class="text-xs font-bold text-danger"><i class="bi bi-exclamation-triangle me-1"></i>{{ t.weaknesses }}</span>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-lock-fill"></i>
+                <h4>No TLS data</h4>
+                <p>TLS inspection checks certificates, ciphers, and protocol versions on encrypted ports.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Credentials Tab -->
+        <div class="tab-pane" id="tab-creds">
+            {% if credentials %}
+            <div class="table-wrapper">
+                <table class="table table-sm">
+                    <thead><tr><th>Service</th><th>Port</th><th>Username</th><th>Result</th><th>Tested</th></tr></thead>
+                    <tbody>
+                    {% for c in credentials %}
+                    <tr class="port-row {{ 'credential-row success' if c.success else '' }}">
+                        <td><span class="svc-badge">{{ c.service or '—' }}</span></td>
+                        <td class="font-mono text-sm">{{ c.port or '—' }}</td>
+                        <td class="font-mono text-sm font-bold">{{ c.username or '—' }}</td>
+                        <td>
+                            {% if c.success %}
+                            <span class="badge badge-danger badge-pill"><i class="bi bi-check-circle-fill me-1"></i>SUCCESS</span>
+                            {% else %}
+                            <span class="badge badge-secondary badge-pill">Failed</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-xs text-muted">{{ c.tested_at[:16] if c.tested_at else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-key-fill"></i>
+                <h4>No credential tests</h4>
+                <p>Credential spraying checks default/common credentials on discovered services (1 attempt/host/hour for stealth).</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Anomalies Tab -->
+        <div class="tab-pane" id="tab-anomalies">
+            {% if anomalies %}
+            {% for a in anomalies %}
+            <div class="finding-card {{ 'critical' if a.score > 0.8 else 'high' if a.score > 0.6 else 'medium' }}" style="animation:fadeInUp 0.2s ease;animation-delay:{{ loop.index0 * 0.03 }}s;animation-fill-mode:both;">
+                <div class="d-flex align-center justify-between">
+                    <div class="d-flex align-center gap-2">
+                        <span class="badge badge-{{ 'danger' if a.score > 0.8 else 'warning' if a.score > 0.5 else 'info' }} badge-pill">{{ a.anomaly_type }}</span>
+                        <div class="d-flex align-center gap-2">
+                            <div class="progress" style="width:80px;height:6px;"><div class="progress-bar {{ 'danger' if a.score > 0.8 else 'warning' if a.score > 0.5 else 'info' }}" style="width:{{ (a.score * 100)|int }}%"></div></div>
+                            <span class="text-xs font-mono font-bold">{{ '%.2f'|format(a.score) }}</span>
+                        </div>
+                    </div>
+                    <span class="text-xs text-muted">{{ a.detected_at[:16] if a.detected_at else '' }}</span>
+                </div>
+                {% if a.description %}
+                <p class="text-sm text-muted mb-0" style="margin-top:6px;">{{ a.description }}</p>
+                {% endif %}
+            </div>
+            {% endfor %}
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-graph-up-arrow"></i>
+                <h4>No anomalies detected</h4>
+                <p>The ML engine flags unusual behavior (new ports, banner changes, timing anomalies) after collecting baseline data.</p>
+            </div>
+            {% endif %}
+        </div>
+
+        <!-- Timeline Tab -->
+        <div class="tab-pane" id="tab-timeline">
+            {% if banner_changes or ports or vulns %}
+            <div style="padding-left:8px;">
+                {% if host.first_seen %}
+                <div class="timeline-item">
+                    <span class="text-xs text-muted">{{ host.first_seen[:16] }}</span>
+                    <p class="text-sm mb-0 mt-1"><i class="bi bi-plus-circle text-success me-1"></i> Host discovered via <strong>{{ host.discovery_method or 'unknown' }}</strong></p>
+                </div>
+                {% endif %}
+                {% for b in banner_changes %}
+                <div class="timeline-item">
+                    <span class="text-xs text-muted">{{ b.detected_at[:16] if b.detected_at else '—' }}</span>
+                    <p class="text-sm mb-0 mt-1"><i class="bi bi-arrow-repeat text-warning me-1"></i> Banner changed on port <strong>{{ b.port }}</strong></p>
+                    {% if b.old_banner or b.new_banner %}
+                    <div class="text-xs font-mono mt-1" style="padding:4px 8px;background:var(--bg-input);border-radius:var(--radius-sm);">
+                        {% if b.old_banner %}<div style="color:var(--danger);">- {{ b.old_banner[:80] }}</div>{% endif %}
+                        {% if b.new_banner %}<div style="color:var(--success);">+ {{ b.new_banner[:80] }}</div>{% endif %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% if host.last_seen and host.last_seen != host.first_seen %}
+                <div class="timeline-item">
+                    <span class="text-xs text-muted">{{ host.last_seen[:16] }}</span>
+                    <p class="text-sm mb-0 mt-1"><i class="bi bi-check-circle text-info me-1"></i> Last seen alive</p>
+                </div>
+                {% endif %}
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <i class="bi bi-clock-history"></i>
+                <h4>No timeline events yet</h4>
+                <p>Timeline shows banner changes, service discoveries, and host state changes over time.</p>
+            </div>
+            {% endif %}
+        </div>
+
+    </div><!-- /tab-content -->
+</div><!-- /card -->
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    // Tab switching
+    var tabs = document.querySelectorAll('#hostTabs .tab-item');
+    tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+            tabs.forEach(function(t) { t.classList.remove('active'); });
+            tab.classList.add('active');
+            document.querySelectorAll('.tab-pane').forEach(function(p) { p.classList.remove('active'); });
+            var target = document.getElementById('tab-' + tab.dataset.tab);
+            if (target) { target.classList.add('active'); }
+            try { localStorage.setItem('hv-host-tab', tab.dataset.tab); } catch(e) {}
+        });
+    });
+
+    // Restore saved tab
+    try {
+        var saved = localStorage.getItem('hv-host-tab');
+        if (saved) {
+            var tab = document.querySelector('#hostTabs .tab-item[data-tab="' + saved + '"]');
+            if (tab) tab.click();
+        }
+    } catch(e) {}
+
+    // Copy to clipboard
+    window.copyToClipboard = function(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            showToast('Copied: ' + text, 'success');
+        }).catch(function() {
+            var ta = document.createElement('textarea');
+            ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+            document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+            showToast('Copied', 'success');
+        });
+    };
+
+    // Quick scan trigger
+    window.quickScan = function(type) {
+        var ip = '{{ host.ip }}';
+        fetch('/api/scan/trigger', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({type: type, target: ip})
+        }).then(function(r) { return r.json(); }).then(function(d) {
+            showToast((type === 'nuclei' ? 'Nuclei' : 'Port scan') + ' triggered for ' + ip, 'info');
+        }).catch(function() {
+            showToast('Failed to trigger scan', 'danger');
+        });
+    };
+})();
+</script>
+{% endblock %}

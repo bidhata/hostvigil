@@ -1,0 +1,631 @@
+{% extends "base.html" %}
+
+{% block title %}Live Status — HostVigil{% endblock %}
+
+{% block extra_css %}
+<style>
+/* --- Live Status Page --- */
+.daemon-card {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.daemon-indicator {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.6rem;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.daemon-indicator.running {
+  background: var(--success-muted);
+  color: var(--success);
+}
+
+.daemon-indicator.running::before {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 2px solid var(--success);
+  animation: daemonPulse 2s ease-in-out infinite;
+}
+
+.daemon-indicator.stopped {
+  background: var(--border-color);
+  color: var(--text-muted);
+}
+
+@keyframes daemonPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.4; transform: scale(1.15); }
+}
+
+.daemon-info { flex: 1; }
+.daemon-state {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.daemon-meta {
+  display: flex;
+  gap: 20px;
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+}
+.daemon-meta span { display: flex; align-items: center; gap: 5px; }
+
+/* --- Phase Chips --- */
+.phase-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.phase-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-full);
+  font-size: 0.8rem;
+  font-weight: 500;
+  border: 1px solid var(--border-color);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.phase-chip .chip-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+}
+
+.phase-chip.idle .chip-icon {
+  background: var(--border-color);
+  color: var(--text-muted);
+}
+
+.phase-chip.running {
+  border-color: var(--primary);
+  background: var(--primary-muted);
+  color: var(--primary);
+}
+
+.phase-chip.running .chip-icon {
+  background: var(--primary);
+  color: #fff;
+  animation: chipSpin 1.2s linear infinite;
+}
+
+@keyframes chipSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.phase-chip.completed {
+  border-color: var(--success);
+  background: var(--success-muted);
+  color: var(--success);
+}
+
+.phase-chip.completed .chip-icon {
+  background: var(--success);
+  color: #fff;
+}
+
+.phase-chip.error {
+  border-color: var(--danger);
+  background: var(--danger-muted);
+  color: var(--danger);
+}
+
+.phase-chip.error .chip-icon {
+  background: var(--danger);
+  color: #fff;
+}
+
+/* --- Cycle Progress --- */
+.cycle-progress-card {
+  padding: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+}
+
+.cycle-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+
+.cycle-header h3 {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.cycle-stats {
+  display: flex;
+  gap: 16px;
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+}
+
+.cycle-stats span { display: flex; align-items: center; gap: 5px; }
+.cycle-stats i { font-size: 0.85rem; }
+
+.cycle-progress-bar {
+  height: 8px;
+  background: var(--bg-input);
+  border-radius: var(--radius-full);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+
+.cycle-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), var(--info));
+  border-radius: var(--radius-full);
+  transition: width 0.6s ease;
+  width: 0%;
+}
+
+.cycle-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* --- Result Cards --- */
+.result-cards {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+}
+
+@media (max-width: 1200px) { .result-cards { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 576px) { .result-cards { grid-template-columns: 1fr; } }
+
+.result-card {
+  padding: 16px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.result-card .result-val {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.result-card .result-label {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.result-card.hosts .result-val { color: var(--primary); }
+.result-card.ports .result-val { color: var(--info); }
+.result-card.anomalies .result-val { color: var(--warning); }
+.result-card.errors .result-val { color: var(--danger); }
+
+/* --- Phase History --- */
+.phase-history {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+.phase-history .section-title {
+  padding: 16px 20px 12px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.phase-history table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+}
+
+.phase-history th {
+  text-align: left;
+  padding: 10px 16px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  background: var(--bg-input);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.phase-history td {
+  padding: 10px 16px;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--border-color);
+  white-space: nowrap;
+}
+
+.phase-history tr:last-child td { border-bottom: none; }
+.phase-history tr:hover td { background: var(--bg-card-hover); }
+
+.phase-result-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  font-size: 0.72rem;
+  font-weight: 500;
+}
+
+.phase-result-badge.success { background: var(--success-muted); color: var(--success); }
+.phase-result-badge.error { background: var(--danger-muted); color: var(--danger); }
+.phase-result-badge.skipped { background: var(--border-color); color: var(--text-muted); }
+
+/* Section spacing */
+.ls-section { margin-bottom: 20px; }
+.ls-section-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+</style>
+{% endblock %}
+
+{% block page_title %}Live Status{% endblock %}
+{% block page_subtitle %}Real-time pipeline monitoring{% endblock %}
+
+{% block content %}
+<!-- Daemon Status -->
+<div class="ls-section">
+  <div class="daemon-card" id="daemonCard">
+    <div class="daemon-indicator stopped" id="daemonIndicator">
+      <i class="bi bi-broadcast-pin"></i>
+    </div>
+    <div class="daemon-info">
+      <div class="daemon-state" id="daemonState">Checking...</div>
+      <div class="daemon-meta">
+        <span><i class="bi bi-clock-history"></i> Uptime: <strong id="daemonUptime">--</strong></span>
+        <span><i class="bi bi-arrow-repeat"></i> Cycles: <strong id="daemonCycles">0</strong></span>
+        <span><i class="bi bi-calendar3"></i> Since: <strong id="daemonSince">--</strong></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Pipeline Phase Chips -->
+<div class="ls-section">
+  <div class="ls-section-label">Pipeline Phases</div>
+  <div class="phase-chips" id="phaseChips">
+    <div class="phase-chip idle" data-phase="discovery">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      Discovery
+    </div>
+    <div class="phase-chip idle" data-phase="tcp_scan">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      TCP Scan
+    </div>
+    <div class="phase-chip idle" data-phase="udp_scan">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      UDP Scan
+    </div>
+    <div class="phase-chip idle" data-phase="os_fingerprint">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      OS Fingerprint
+    </div>
+    <div class="phase-chip idle" data-phase="tls_inspection">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      TLS Inspection
+    </div>
+    <div class="phase-chip idle" data-phase="service_enum">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      Service Enum
+    </div>
+    <div class="phase-chip idle" data-phase="ml_analysis">
+      <span class="chip-icon"><i class="bi bi-circle"></i></span>
+      ML Analysis
+    </div>
+  </div>
+</div>
+
+<!-- Current Cycle Progress -->
+<div class="ls-section">
+  <div class="cycle-progress-card">
+    <div class="cycle-header">
+      <h3><i class="bi bi-activity"></i> Cycle #<span id="cycleNumber">0</span></h3>
+      <div class="cycle-stats">
+        <span><i class="bi bi-stopwatch"></i> Elapsed: <strong id="cycleElapsed">--</strong></span>
+        <span><i class="bi bi-hourglass-split"></i> Next cycle: <strong id="cycleNext">--</strong></span>
+      </div>
+    </div>
+    <div class="cycle-progress-bar">
+      <div class="cycle-progress-fill" id="cycleProgressFill"></div>
+    </div>
+    <div class="cycle-footer">
+      <span id="cyclePhaseLabel">Idle</span>
+      <span id="cyclePercent">0%</span>
+    </div>
+  </div>
+</div>
+
+<!-- Last Cycle Results -->
+<div class="ls-section">
+  <div class="ls-section-label">Last Cycle Results</div>
+  <div class="result-cards">
+    <div class="result-card hosts">
+      <div class="result-val" id="resultHosts">0</div>
+      <div class="result-label">Hosts Discovered</div>
+    </div>
+    <div class="result-card ports">
+      <div class="result-val" id="resultPorts">0</div>
+      <div class="result-label">Ports Found</div>
+    </div>
+    <div class="result-card anomalies">
+      <div class="result-val" id="resultAnomalies">0</div>
+      <div class="result-label">Anomalies Detected</div>
+    </div>
+    <div class="result-card errors">
+      <div class="result-val" id="resultErrors">0</div>
+      <div class="result-label">Errors</div>
+    </div>
+  </div>
+</div>
+
+<!-- Phase History Table -->
+<div class="ls-section">
+  <div class="phase-history">
+    <div class="section-title">Phase History</div>
+    <div class="table-container" style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th>Phase</th>
+            <th>Started</th>
+            <th>Duration</th>
+            <th>Result</th>
+            <th>Hosts / Ports</th>
+          </tr>
+        </thead>
+        <tbody id="phaseHistoryBody">
+          <tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">Waiting for data...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+  'use strict';
+
+  var POLL_INTERVAL = 3000;
+  var pollTimer = null;
+
+  var PHASES = ['discovery', 'tcp_scan', 'udp_scan', 'os_fingerprint', 'tls_inspection', 'service_enum', 'ml_analysis'];
+  var PHASE_LABELS = {
+    discovery: 'Discovery',
+    tcp_scan: 'TCP Scan',
+    udp_scan: 'UDP Scan',
+    os_fingerprint: 'OS Fingerprint',
+    tls_inspection: 'TLS Inspection',
+    service_enum: 'Service Enum',
+    ml_analysis: 'ML Analysis'
+  };
+
+  function formatDuration(seconds) {
+    if (!seconds && seconds !== 0) return '--';
+    seconds = Math.round(seconds);
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+    var h = Math.floor(seconds / 3600);
+    var m = Math.floor((seconds % 3600) / 60);
+    return h + 'h ' + m + 'm';
+  }
+
+  function formatCountdown(seconds) {
+    if (!seconds || seconds <= 0) return 'Now';
+    if (seconds < 60) return seconds + 's';
+    if (seconds < 3600) return Math.floor(seconds / 60) + 'm ' + (seconds % 60) + 's';
+    var h = Math.floor(seconds / 3600);
+    var m = Math.floor((seconds % 3600) / 60);
+    return h + 'h ' + m + 'm';
+  }
+
+  function getChipIcon(status) {
+    switch (status) {
+      case 'running': return '<i class="bi bi-arrow-clockwise"></i>';
+      case 'completed': return '<i class="bi bi-check"></i>';
+      case 'error': return '<i class="bi bi-x"></i>';
+      default: return '<i class="bi bi-circle"></i>';
+    }
+  }
+
+  function updateDaemon(data) {
+    var indicator = document.getElementById('daemonIndicator');
+    var stateEl = document.getElementById('daemonState');
+
+    var isRunning = data.state === 'running' || data.state === 'active';
+
+    indicator.className = 'daemon-indicator ' + (isRunning ? 'running' : 'stopped');
+    stateEl.textContent = isRunning ? 'Daemon Running' : (data.state === 'stopped' ? 'Daemon Stopped' : (data.state || 'Unknown'));
+
+    document.getElementById('daemonUptime').textContent = formatDuration(data.uptime || 0);
+    document.getElementById('daemonCycles').textContent = (data.cycle && data.cycle.number) ? data.cycle.number : '0';
+    document.getElementById('daemonSince').textContent = data.started_at ? formatTime(data.started_at) : '--';
+  }
+
+  function updatePhaseChips(data) {
+    var phasesData = {};
+    if (data.phases && Array.isArray(data.phases)) {
+      data.phases.forEach(function(p) { phasesData[p.name] = p; });
+    }
+
+    var currentPhase = data.current_phase || '';
+
+    PHASES.forEach(function(phaseName) {
+      var chip = document.querySelector('.phase-chip[data-phase="' + phaseName + '"]');
+      if (!chip) return;
+
+      var phaseInfo = phasesData[phaseName] || {};
+      var status = phaseInfo.status || 'idle';
+
+      // If this is the current phase, override status to running
+      if (currentPhase === phaseName) status = 'running';
+
+      chip.className = 'phase-chip ' + status;
+      chip.querySelector('.chip-icon').innerHTML = getChipIcon(status);
+    });
+  }
+
+  function updateCycleProgress(data) {
+    var cycle = data.cycle || {};
+    var totalPhases = PHASES.length;
+    var completedCount = 0;
+    var currentPhase = data.current_phase || '';
+
+    if (data.phases && Array.isArray(data.phases)) {
+      data.phases.forEach(function(p) {
+        if (p.status === 'completed') completedCount++;
+      });
+    }
+
+    // If a phase is currently running, add partial progress
+    var percent = Math.round((completedCount / totalPhases) * 100);
+    if (currentPhase) {
+      var running_extra = Math.round((1 / totalPhases) * 50); // half of one phase
+      percent = Math.min(100, percent + running_extra);
+    }
+
+    document.getElementById('cycleNumber').textContent = cycle.number || '0';
+    document.getElementById('cycleElapsed').textContent = formatDuration(cycle.elapsed);
+    document.getElementById('cycleNext').textContent = formatCountdown(cycle.next_cycle_in);
+    document.getElementById('cycleProgressFill').style.width = percent + '%';
+    document.getElementById('cyclePercent').textContent = percent + '%';
+    document.getElementById('cyclePhaseLabel').textContent = currentPhase ? PHASE_LABELS[currentPhase] || currentPhase : 'Idle';
+  }
+
+  function updateResults(data) {
+    var r = data.last_results || {};
+    document.getElementById('resultHosts').textContent = (r.hosts || 0).toLocaleString();
+    document.getElementById('resultPorts').textContent = (r.ports || 0).toLocaleString();
+    document.getElementById('resultAnomalies').textContent = (r.anomalies || 0).toLocaleString();
+    document.getElementById('resultErrors').textContent = (r.errors || 0).toLocaleString();
+  }
+
+  function updateHistory(data) {
+    var phases = data.phases || [];
+    var tbody = document.getElementById('phaseHistoryBody');
+
+    // Only show phases that have been run (have last_run)
+    var history = phases.filter(function(p) { return p.last_run; });
+
+    // Sort by last_run descending, keep latest 10
+    history.sort(function(a, b) {
+      return new Date(b.last_run) - new Date(a.last_run);
+    });
+    history = history.slice(0, 10);
+
+    if (history.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:var(--text-muted);padding:24px;">No phase history yet</td></tr>';
+      return;
+    }
+
+    var html = '';
+    history.forEach(function(p) {
+      var resultClass = p.result === 'success' ? 'success' : (p.result === 'error' ? 'error' : 'skipped');
+      var resultIcon = p.result === 'success' ? 'bi-check-circle' : (p.result === 'error' ? 'bi-x-circle' : 'bi-dash-circle');
+      var label = PHASE_LABELS[p.name] || p.name;
+      var affected = '';
+      if (p.hosts_affected || p.ports_affected) {
+        affected = (p.hosts_affected || 0) + ' / ' + (p.ports_affected || 0);
+      } else {
+        affected = '<span style="color:var(--text-muted);">--</span>';
+      }
+
+      html += '<tr>' +
+        '<td><strong>' + escapeHtml(label) + '</strong></td>' +
+        '<td>' + (p.last_run ? formatTime(p.last_run) : '--') + '</td>' +
+        '<td>' + formatDuration(p.duration) + '</td>' +
+        '<td><span class="phase-result-badge ' + resultClass + '"><i class="bi ' + resultIcon + '"></i> ' + (p.result || 'unknown') + '</span></td>' +
+        '<td>' + affected + '</td>' +
+        '</tr>';
+    });
+
+    tbody.innerHTML = html;
+  }
+
+  function fetchStatus() {
+    fetch('/api/daemon/live-status')
+      .then(function(r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function(data) {
+        updateDaemon(data);
+        updatePhaseChips(data);
+        updateCycleProgress(data);
+        updateResults(data);
+        updateHistory(data);
+      })
+      .catch(function(err) {
+        // On error, show stopped state
+        document.getElementById('daemonIndicator').className = 'daemon-indicator stopped';
+        document.getElementById('daemonState').textContent = 'Connection Lost';
+      });
+  }
+
+  // Initial fetch + polling
+  fetchStatus();
+  pollTimer = setInterval(fetchStatus, POLL_INTERVAL);
+
+  // Pause polling when tab is hidden
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    } else {
+      fetchStatus();
+      pollTimer = setInterval(fetchStatus, POLL_INTERVAL);
+    }
+  });
+})();
+</script>
+{% endblock %}

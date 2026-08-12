@@ -1,0 +1,840 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HostVigil — Feature Presentation</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #07070d;
+            --surface: #0f0f1a;
+            --surface-2: #161625;
+            --border: #1c1c30;
+            --text: #e8e8ef;
+            --muted: #6b6b80;
+            --primary: #8b5cf6;
+            --primary-dim: #6d3fd4;
+            --accent: #06d6a0;
+            --cyan: #22d3ee;
+            --danger: #f43f5e;
+            --warning: #fbbf24;
+            --glow-purple: 0 0 40px rgba(139, 92, 246, 0.2), 0 0 80px rgba(139, 92, 246, 0.05);
+            --glow-cyan: 0 0 40px rgba(34, 211, 238, 0.2);
+        }
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            height: 100vh;
+            width: 100vw;
+        }
+
+        /* Slide system */
+        .slide-deck { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+        .slide {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            padding: 50px 70px;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.6s ease, transform 0.6s ease;
+            transform: scale(0.97);
+            background: var(--bg);
+        }
+        .slide.active { opacity: 1; visibility: visible; transform: scale(1); }
+        .slide-content { width: 100%; max-width: 1200px; display: flex; flex-direction: column; gap: 20px; }
+
+        /* Background effects */
+        .bg-grid {
+            position: absolute; inset: 0; opacity: 0.03;
+            background-image: linear-gradient(var(--border) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--border) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+        .bg-radial {
+            position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(ellipse at 50% 0%, rgba(139,92,246,0.08) 0%, transparent 60%);
+        }
+        .bg-radial-cyan {
+            position: absolute; inset: 0; pointer-events: none;
+            background: radial-gradient(ellipse at 70% 30%, rgba(6,214,160,0.06) 0%, transparent 50%);
+        }
+
+        /* Typography */
+        h1 { font-size: clamp(44px, 5.5vw, 76px); font-weight: 800; line-height: 1.05; letter-spacing: -1px; }
+        h2 { font-size: clamp(32px, 3.5vw, 52px); font-weight: 700; line-height: 1.15; letter-spacing: -0.5px; }
+        h3 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: 2px; color: var(--primary); }
+        p { font-size: clamp(15px, 1.4vw, 19px); line-height: 1.65; color: var(--muted); }
+        .mono { font-family: 'JetBrains Mono', monospace; }
+
+        /* Gradient text */
+        .grad { background: linear-gradient(135deg, #a78bfa, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .grad-warm { background: linear-gradient(135deg, #fbbf24, #f43f5e); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .grad-green { background: linear-gradient(135deg, #06d6a0, #22d3ee); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+        .card:hover { transform: translateY(-2px); border-color: rgba(139,92,246,0.3); }
+        .card-glow::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle, rgba(139,92,246,0.04) 0%, transparent 70%);
+            pointer-events: none;
+        }
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+        .card-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .card-grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 20px; }
+
+        /* Icon circles */
+        .icon-circle {
+            width: 44px; height: 44px; border-radius: 12px;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 20px; margin-bottom: 14px;
+        }
+        .icon-circle.purple { background: linear-gradient(135deg, rgba(139,92,246,0.2), rgba(139,92,246,0.05)); color: #a78bfa; }
+        .icon-circle.cyan { background: linear-gradient(135deg, rgba(34,211,238,0.2), rgba(34,211,238,0.05)); color: #22d3ee; }
+        .icon-circle.green { background: linear-gradient(135deg, rgba(6,214,160,0.2), rgba(6,214,160,0.05)); color: #06d6a0; }
+        .icon-circle.red { background: linear-gradient(135deg, rgba(244,63,94,0.2), rgba(244,63,94,0.05)); color: #f43f5e; }
+        .icon-circle.yellow { background: linear-gradient(135deg, rgba(251,191,36,0.2), rgba(251,191,36,0.05)); color: #fbbf24; }
+
+        .card h4 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+        .card p { font-size: 13px; line-height: 1.5; }
+
+        /* Code blocks */
+        .code-block {
+            background: #08080f; border: 1px solid var(--border); border-radius: 12px;
+            padding: 20px 24px; font-family: 'JetBrains Mono', monospace;
+            font-size: clamp(12px, 1.1vw, 15px); line-height: 1.8; color: #8b8ba0;
+            position: relative; overflow: hidden;
+        }
+        .code-block::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+        .code-block .cm { color: #3d3d50; }
+        .code-block .cmd { color: #22d3ee; }
+        .code-block .str { color: #06d6a0; }
+        .code-block .hl { color: #a78bfa; }
+        .code-block .warn { color: #fbbf24; }
+
+        /* Stats */
+        .stat-row { display: flex; gap: 48px; flex-wrap: wrap; }
+        .stat { text-align: center; }
+        .stat-value { font-size: clamp(40px, 4.5vw, 64px); font-weight: 800; }
+        .stat-label { font-size: 13px; color: var(--muted); margin-top: 4px; font-weight: 500; }
+
+        /* Stealth meter */
+        .meter { width: 100%; height: 5px; background: var(--surface-2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+        .meter-fill { height: 100%; border-radius: 3px; transition: width 1s ease; }
+        .meter-fill.high { background: linear-gradient(90deg, #06d6a0, #22d3ee); }
+        .meter-fill.med { background: linear-gradient(90deg, #fbbf24, #06d6a0); }
+        .meter-fill.low { background: linear-gradient(90deg, #f43f5e, #fbbf24); }
+
+        /* Table */
+        .table-wrap { border-radius: 12px; border: 1px solid var(--border); overflow: hidden; background: var(--surface); }
+        table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        th { padding: 12px 16px; text-align: left; font-weight: 600; background: var(--surface-2); color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+        td { padding: 11px 16px; border-top: 1px solid var(--border); }
+        tr:hover td { background: rgba(139,92,246,0.02); }
+
+        /* Tags */
+        .tag { display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px; border-radius: 20px; font-size: 12px; font-weight: 500; }
+        .tag-purple { background: rgba(139,92,246,0.12); color: #a78bfa; border: 1px solid rgba(139,92,246,0.2); }
+        .tag-cyan { background: rgba(34,211,238,0.1); color: #22d3ee; border: 1px solid rgba(34,211,238,0.2); }
+        .tag-green { background: rgba(6,214,160,0.1); color: #06d6a0; border: 1px solid rgba(6,214,160,0.2); }
+        .tag-red { background: rgba(244,63,94,0.1); color: #f43f5e; border: 1px solid rgba(244,63,94,0.2); }
+        .tag-yellow { background: rgba(251,191,36,0.1); color: #fbbf24; border: 1px solid rgba(251,191,36,0.2); }
+
+        /* VS comparison */
+        .vs-grid { display: grid; grid-template-columns: 1fr 40px 1fr; gap: 20px; align-items: center; }
+        .vs-label { font-size: 20px; font-weight: 800; color: var(--muted); text-align: center; }
+
+        /* Animated dots */
+        @keyframes pulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+        @keyframes glow { 0%, 100% { box-shadow: 0 0 5px var(--primary); } 50% { box-shadow: 0 0 20px var(--primary), 0 0 40px rgba(139,92,246,0.2); } }
+        @keyframes scan-line { 0% { top: 0; } 100% { top: 100%; } }
+        .pulse { animation: pulse 2s infinite; }
+        .float { animation: float 3s ease-in-out infinite; }
+
+        /* Flow diagram */
+        .flow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: center; }
+        .flow-box {
+            padding: 12px 18px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            border: 1px solid var(--border); background: var(--surface); text-align: center;
+            position: relative;
+        }
+        .flow-box small { display: block; font-weight: 400; color: var(--muted); font-size: 11px; margin-top: 2px; }
+        .flow-arrow { color: var(--primary); font-size: 18px; opacity: 0.6; }
+
+        /* Feature list */
+        .feat-list { list-style: none; display: flex; flex-direction: column; gap: 10px; }
+        .feat-list li { font-size: 15px; padding-left: 28px; position: relative; color: var(--muted); line-height: 1.5; }
+        .feat-list li::before { content: ''; position: absolute; left: 0; top: 7px; width: 8px; height: 8px; border-radius: 50%; background: var(--primary); }
+        .feat-list li strong { color: var(--text); }
+
+        /* Progress & nav */
+        .progress-bar { position: fixed; top: 0; left: 0; height: 2px; background: linear-gradient(90deg, var(--primary), var(--cyan)); transition: width 0.4s; z-index: 1000; }
+        .nav-controls { position: fixed; bottom: 24px; right: 32px; display: flex; align-items: center; gap: 10px; z-index: 1000; }
+        .nav-btn {
+            background: var(--surface); border: 1px solid var(--border); color: var(--text);
+            width: 38px; height: 38px; border-radius: 10px; cursor: pointer; font-size: 18px;
+            display: flex; align-items: center; justify-content: center; transition: all 0.2s;
+        }
+        .nav-btn:hover { background: var(--surface-2); border-color: var(--primary); box-shadow: var(--glow-purple); }
+        .slide-num { color: var(--muted); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+        .key-hint { position: fixed; bottom: 24px; left: 32px; font-size: 11px; color: var(--muted); opacity: 0.5; z-index: 1000; }
+
+        /* Title slide special */
+        .title-center { text-align: center; align-items: center; }
+
+        @media (max-width: 768px) {
+            .slide { padding: 30px 20px; }
+            .card-grid-3, .card-grid-2 { grid-template-columns: 1fr; }
+            .vs-grid { grid-template-columns: 1fr; }
+            .stat-row { gap: 24px; }
+            .flow { gap: 4px; }
+            .flow-box { padding: 8px 12px; font-size: 11px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="progress-bar" id="progressBar"></div>
+    <div class="key-hint">← → or Space to navigate</div>
+    <div class="slide-deck">
+
+    <!-- SLIDE 1: Title -->
+    <div class="slide active title-center">
+        <div class="bg-grid"></div>
+        <div class="bg-radial"></div>
+        <div class="slide-content" style="align-items:center; position:relative; z-index:1;">
+            <div style="width:80px; height:80px; border-radius:20px; background:linear-gradient(135deg, var(--primary), var(--cyan)); display:flex; align-items:center; justify-content:center; font-size:36px; margin-bottom:8px; box-shadow: var(--glow-purple);">
+                <i class="bi bi-shield-lock-fill" style="color:#fff;"></i>
+            </div>
+            <h1 class="grad">HostVigil</h1>
+            <p style="font-size:clamp(18px,2vw,24px); color:var(--muted); max-width:600px;">The ghost in your network.<br>Stealth internal reconnaissance that learns.</p>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-top:16px;">
+                <span class="tag tag-purple"><i class="bi bi-code-slash"></i> Python 3.11+</span>
+                <span class="tag tag-cyan"><i class="bi bi-cpu"></i> Self-Learning ML</span>
+                <span class="tag tag-green"><i class="bi bi-eye-slash"></i> Zero IDS Alerts</span>
+                <span class="tag tag-red"><i class="bi bi-crosshair"></i> Red Team Ready</span>
+            </div>
+            <p style="margin-top:28px; font-size:14px;">Krishnendu Paul · <span style="color:var(--primary);">@bidhata</span> · krishnendu.com</p>
+        </div>
+    </div>
+
+    <!-- SLIDE 2: The Problem -->
+    <div class="slide">
+        <div class="bg-grid"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-exclamation-triangle"></i> THE PROBLEM</h3>
+            <h2>Traditional Scanners <span class="grad-warm">Alert the Enemy</span></h2>
+            <div class="vs-grid" style="margin-top:20px;">
+                <div class="card" style="border-color: rgba(244,63,94,0.3);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle red"><i class="bi bi-x-circle"></i></div>
+                        <h4 style="color:var(--danger);">Traditional Approach</h4>
+                    </div>
+                    <div class="code-block" style="font-size:12px;">
+                        <span class="cmd">$</span> nmap -sS 10.0.0.0/8<br>
+                        <span class="cm"># 47 IDS alerts triggered</span><br>
+                        <span class="cm"># Blue team incident opened</span><br>
+                        <span class="warn"># Red team engagement BURNED</span>
+                    </div>
+                </div>
+                <div class="vs-label">vs</div>
+                <div class="card card-glow" style="border-color: rgba(6,214,160,0.3);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle green"><i class="bi bi-check-circle"></i></div>
+                        <h4 style="color:var(--accent);">HostVigil</h4>
+                    </div>
+                    <div class="code-block" style="font-size:12px;">
+                        <span class="cmd">$</span> python run.py daemon<br>
+                        <span class="str"># 20,000 hosts mapped</span><br>
+                        <span class="str"># Over several hours</span><br>
+                        <span class="str"># Zero alerts triggered ✓</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 3: Architecture Overview -->
+    <div class="slide">
+        <div class="bg-radial-cyan"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-diagram-3"></i> ARCHITECTURE</h3>
+            <h2>Full Reconnaissance Pipeline</h2>
+            <p>Automated, continuous, self-improving. Everything runs in a single daemon process.</p>
+            <div class="flow" style="margin-top:24px;">
+                <div class="flow-box" style="border-color:var(--primary);"><i class="bi bi-search" style="color:var(--primary);"></i><br>Discovery<small>11 techniques</small></div>
+                <div class="flow-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="flow-box" style="border-color:var(--cyan);"><i class="bi bi-hdd-network" style="color:var(--cyan);"></i><br>Scanner<small>TCP/UDP/TLS/OS</small></div>
+                <div class="flow-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="flow-box" style="border-color:var(--accent);"><i class="bi bi-cpu" style="color:var(--accent);"></i><br>ML Engine<small>Self-learning</small></div>
+                <div class="flow-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="flow-box" style="border-color:var(--danger);"><i class="bi bi-bug" style="color:var(--danger);"></i><br>Nuclei<small>Vuln scan</small></div>
+                <div class="flow-arrow"><i class="bi bi-chevron-right"></i></div>
+                <div class="flow-box" style="border-color:var(--warning);"><i class="bi bi-display" style="color:var(--warning);"></i><br>Dashboard<small>Real-time</small></div>
+            </div>
+            <div class="stat-row" style="margin-top:36px; justify-content:center;">
+                <div class="stat"><div class="stat-value grad">38K+</div><div class="stat-label">Lines of Code</div></div>
+                <div class="stat"><div class="stat-value grad">10</div><div class="stat-label">Dependencies</div></div>
+                <div class="stat"><div class="stat-value grad">0</div><div class="stat-label">Cloud / Telemetry</div></div>
+                <div class="stat"><div class="stat-value grad">200K+</div><div class="stat-label">Host Scale</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 4: Quick Start -->
+    <div class="slide">
+        <div class="bg-grid"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-rocket-takeoff"></i> QUICK START</h3>
+            <h2>Running in <span class="grad-green">30 Seconds</span></h2>
+            <div class="code-block" style="margin-top:12px;">
+                <span class="cm"># Clone and install</span><br>
+                <span class="cmd">$</span> git clone https://github.com/bidhata/HostVigil.git<br>
+                <span class="cmd">$</span> cd HostVigil && pip install -r requirements.txt<br><br>
+                <span class="cm"># Start the daemon — continuous stealth recon + web dashboard</span><br>
+                <span class="cmd">$</span> python run.py daemon<br>
+                <span class="str">[*] Dashboard: http://localhost:5000</span><br>
+                <span class="str">[*] Stealth timing active — randomized intervals</span><br>
+                <span class="str">[*] Pipeline: Discovery → Scan → Enum → TLS → OS → ML</span><br><br>
+                <span class="cm"># Or one command with Docker</span><br>
+                <span class="cmd">$</span> docker-compose up -d
+            </div>
+            <div style="display:flex; gap:16px; margin-top:16px; flex-wrap:wrap;">
+                <div class="card" style="flex:1; min-width:200px; padding:16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="bi bi-box-seam" style="color:var(--cyan); font-size:18px;"></i>
+                        <h4>10 dependencies</h4>
+                    </div>
+                    <p style="margin-top:4px;">No bloat. Pinned versions.</p>
+                </div>
+                <div class="card" style="flex:1; min-width:200px; padding:16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="bi bi-cloud-slash" style="color:var(--accent); font-size:18px;"></i>
+                        <h4>Zero cloud deps</h4>
+                    </div>
+                    <p style="margin-top:4px;">Runs fully offline.</p>
+                </div>
+                <div class="card" style="flex:1; min-width:200px; padding:16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <i class="bi bi-terminal" style="color:var(--primary); font-size:18px;"></i>
+                        <h4>18+ CLI commands</h4>
+                    </div>
+                    <p style="margin-top:4px;">Full control from terminal.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 5: Discovery Techniques -->
+    <div class="slide">
+        <div class="bg-radial"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-radar"></i> DISCOVERY</h3>
+            <h2>11 Techniques, <span class="grad">Speed-Ordered</span></h2>
+            <div class="table-wrap" style="margin-top:12px;">
+                <table>
+                    <thead><tr><th>Technique</th><th>Method</th><th>Stealth Level</th></tr></thead>
+                    <tbody>
+                        <tr><td><i class="bi bi-bullseye" style="color:var(--primary);"></i> <strong>Nmap Discover</strong></td><td>ICMP/TCP probes (runs first, fastest)</td><td><div class="meter"><div class="meter-fill low" style="width:40%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-windows" style="color:var(--cyan);"></i> NetBIOS/NBNS</td><td>Windows host discovery</td><td><div class="meter"><div class="meter-fill med" style="width:60%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-broadcast" style="color:var(--accent);"></i> mDNS Enum</td><td>.local service queries</td><td><div class="meter"><div class="meter-fill high" style="width:80%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-router" style="color:var(--cyan);"></i> SSDP/UPnP</td><td>Multicast discovery</td><td><div class="meter"><div class="meter-fill high" style="width:80%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-lightning" style="color:var(--warning);"></i> TCP SYN Ping</td><td>Lightweight alive check</td><td><div class="meter"><div class="meter-fill med" style="width:60%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-diagram-2" style="color:var(--accent);"></i> SNMP Sweep</td><td>Community probes (45s+ delays)</td><td><div class="meter"><div class="meter-fill high" style="width:80%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-globe" style="color:var(--primary);"></i> DNS Reverse Walk</td><td>PTR lookups with heavy jitter</td><td><div class="meter"><div class="meter-fill high" style="width:80%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-ear" style="color:var(--accent);"></i> Passive Sniff</td><td>Zero packets sent — just listens</td><td><div class="meter"><div class="meter-fill high" style="width:100%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-reception-4" style="color:var(--accent);"></i> DHCP Passive</td><td>Silent DHCP capture</td><td><div class="meter"><div class="meter-fill high" style="width:100%"></div></div></td></tr>
+                        <tr><td><i class="bi bi-server" style="color:var(--cyan);"></i> Custom DNS</td><td>Internal DNS zone lookups</td><td><div class="meter"><div class="meter-fill high" style="width:80%"></div></div></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 6: Deep Scanning Suite -->
+    <div class="slide">
+        <div class="bg-radial-cyan"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-binoculars"></i> SCANNING</h3>
+            <h2>Deep Scanning <span class="grad">Suite</span></h2>
+            <div class="card-grid-3" style="margin-top:16px;">
+                <div class="card card-glow">
+                    <div class="icon-circle purple"><i class="bi bi-lightning-charge"></i></div>
+                    <h4>TCP Scanner</h4>
+                    <p>Connect/SYN scan, 1000+ port profiles, adaptive throttle, decoy IPs, time windowing</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle cyan"><i class="bi bi-broadcast-pin"></i></div>
+                    <h4>UDP Scanner</h4>
+                    <p>DNS, SNMP, NTP, SSDP, mDNS with protocol-specific payload probes</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle green"><i class="bi bi-lock"></i></div>
+                    <h4>TLS Inspector</h4>
+                    <p>Cert extraction, weak ciphers, expired certs, protocol versions, SAN analysis</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle yellow"><i class="bi bi-fingerprint"></i></div>
+                    <h4>OS Fingerprint</h4>
+                    <p>Passive (banner/port/TTL) + Active (TCP stack probing) — consensus scoring</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle red"><i class="bi bi-unlock"></i></div>
+                    <h4>Service Enum</h4>
+                    <p>SMB null sessions, LDAP anon, Redis/Docker/ES no-auth, signing disabled</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle purple"><i class="bi bi-building"></i></div>
+                    <h4>AD Integration</h4>
+                    <p>Users, groups, Kerberoastable SPNs, AS-REP roastable, domain trusts</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 7: Stealth Features -->
+    <div class="slide">
+        <div class="bg-grid"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-incognito"></i> EVASION</h3>
+            <h2>14 Stealth <span class="grad-green">Techniques</span></h2>
+            <div class="card-grid-2" style="margin-top:12px;">
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="bi bi-stopwatch" style="color:var(--primary); font-size:20px;"></i>
+                        <h4>Randomized Timing</h4>
+                    </div>
+                    <p>10-45s delays + jitter. No predictable patterns for IDS to fingerprint.</p>
+                    <div class="meter"><div class="meter-fill high" style="width:90%"></div></div>
+                </div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="bi bi-speedometer" style="color:var(--cyan); font-size:20px;"></i>
+                        <h4>Adaptive Throttle</h4>
+                    </div>
+                    <p>Automatically backs off on RST spikes — detects when IDS is watching.</p>
+                    <div class="meter"><div class="meter-fill high" style="width:85%"></div></div>
+                </div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="bi bi-people" style="color:var(--accent); font-size:20px;"></i>
+                        <h4>Decoy Packets</h4>
+                    </div>
+                    <p>Configurable fake source IPs mixed with real probes to confuse attribution.</p>
+                    <div class="meter"><div class="meter-fill med" style="width:75%"></div></div>
+                </div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="bi bi-puzzle" style="color:var(--warning); font-size:20px;"></i>
+                        <h4>Packet Fragmentation</h4>
+                    </div>
+                    <p>Split packets evade deep packet inspection. Reassembles only at target.</p>
+                    <div class="meter"><div class="meter-fill high" style="width:80%"></div></div>
+                </div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="bi bi-signpost-split" style="color:var(--danger); font-size:20px;"></i>
+                        <h4>TTL Manipulation</h4>
+                    </div>
+                    <p>Random hop counts prevent fingerprinting by network position analysis.</p>
+                    <div class="meter"><div class="meter-fill med" style="width:70%"></div></div>
+                </div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <i class="bi bi-shield-exclamation" style="color:var(--accent); font-size:20px;"></i>
+                        <h4>Honeypot Detection</h4>
+                    </div>
+                    <p>Auto-detects and skips canaries, honey tokens, and trap services.</p>
+                    <div class="meter"><div class="meter-fill high" style="width:95%"></div></div>
+                </div>
+            </div>
+            <p style="font-size:12px; text-align:center; margin-top:8px; color:var(--muted);">
+                <i class="bi bi-plus-circle"></i> Traffic budgeting · Persona rotation · Time windows · Self-destruct · File-only logging · Scan order shuffle · Scan resume
+            </p>
+        </div>
+    </div>
+
+    <!-- SLIDE 8: ML Engine -->
+    <div class="slide">
+        <div class="bg-radial"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-brain"></i> MACHINE LEARNING</h3>
+            <h2>Gets Smarter <span class="grad">Every Cycle</span></h2>
+            <div class="card-grid-2" style="margin-top:12px;">
+                <div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <div class="icon-circle purple"><i class="bi bi-gear-wide-connected"></i></div>
+                            <h4 style="font-size:16px;">5 Learning Mechanisms</h4>
+                        </div>
+                        <ul class="feat-list">
+                            <li><strong>Feedback Loop</strong> — Operator marks true/false → GradientBoosting trains</li>
+                            <li><strong>Temporal Baseline</strong> — Learns per hour-of-week (168 slots)</li>
+                            <li><strong>Service Correlation</strong> — Co-occurrence matrix of services</li>
+                            <li><strong>Network Evolution</strong> — Host/port/service trends over time</li>
+                            <li><strong>Incremental Update</strong> — All above run every cycle</li>
+                        </ul>
+                    </div>
+                </div>
+                <div>
+                    <div class="card" style="margin-bottom:16px;">
+                        <div style="display:flex; align-items:center; gap:10px; margin-bottom:12px;">
+                            <div class="icon-circle red"><i class="bi bi-exclamation-diamond"></i></div>
+                            <h4 style="font-size:16px;">What It Detects</h4>
+                        </div>
+                        <ul class="feat-list">
+                            <li>New hosts appearing on network</li>
+                            <li>Unusual ports (4444 at 3AM = suspicious)</li>
+                            <li>Banner/service changes</li>
+                            <li>Disappeared hosts (compromise?)</li>
+                            <li>30%+ network drift → alert</li>
+                        </ul>
+                    </div>
+                    <div class="card" style="border-color:rgba(6,214,160,0.3); padding:16px;">
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <i class="bi bi-lightning-charge" style="color:var(--accent); font-size:18px;"></i>
+                            <h4>Cold Start?</h4>
+                        </div>
+                        <p style="margin-top:4px;">Rules work day 1. ML kicks in after 50 data points. No waiting.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 9: Credential Spraying -->
+    <div class="slide">
+        <div class="bg-grid"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-key"></i> OFFENSIVE</h3>
+            <h2>Stealth <span class="grad-warm">Credential Spray</span></h2>
+            <div class="vs-grid" style="margin-top:20px;">
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle cyan"><i class="bi bi-plug"></i></div>
+                        <h4>8 Protocols</h4>
+                    </div>
+                    <ul class="feat-list">
+                        <li>SSH (paramiko)</li>
+                        <li>RDP (NLA/CredSSP)</li>
+                        <li>SMB (NTLMv2 raw)</li>
+                        <li>WinRM · Redis · ES</li>
+                        <li>MySQL · PostgreSQL</li>
+                    </ul>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    <i class="bi bi-arrow-left-right" style="font-size:24px; color:var(--muted);"></i>
+                </div>
+                <div class="card card-glow" style="border-color:rgba(251,191,36,0.3); text-align:center;">
+                    <div class="icon-circle yellow" style="margin:0 auto 14px;"><i class="bi bi-shield-check"></i></div>
+                    <div class="stat-value grad-warm" style="font-size:56px;">1</div>
+                    <div class="stat-label" style="font-size:15px; margin-top:4px;">attempt / host / hour</div>
+                    <p style="margin-top:12px; font-size:13px;">Rate-limited. Randomized timing. Blends with normal auth failures. Never triggers lockout policies.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 10: Enterprise Scale -->
+    <div class="slide">
+        <div class="bg-radial-cyan"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-buildings"></i> ENTERPRISE</h3>
+            <h2>Scales to <span class="grad">200K+ Hosts</span></h2>
+            <div class="table-wrap" style="margin-top:12px;">
+                <table>
+                    <thead><tr><th>Setting</th><th>Default (Stealth)</th><th>Enterprise</th><th>Why</th></tr></thead>
+                    <tbody>
+                        <tr><td><i class="bi bi-clock" style="color:var(--primary);"></i> min_delay</td><td>10.0s</td><td style="color:var(--accent);">0.5s</td><td><span style="color:var(--muted);">10s × 200K = 23 days</span></td></tr>
+                        <tr><td><i class="bi bi-cpu" style="color:var(--cyan);"></i> max_threads</td><td>3</td><td style="color:var(--accent);">15</td><td><span style="color:var(--muted);">Parallelism needed</span></td></tr>
+                        <tr><td><i class="bi bi-speedometer2" style="color:var(--warning);"></i> nmap --min-rate</td><td>100</td><td style="color:var(--accent);">10,000</td><td><span style="color:var(--muted);">Faster discovery</span></td></tr>
+                        <tr><td><i class="bi bi-layers" style="color:var(--primary);"></i> nmap_parallel</td><td>1</td><td style="color:var(--accent);">12</td><td><span style="color:var(--muted);">Concurrent processes</span></td></tr>
+                        <tr><td><i class="bi bi-list-check" style="color:var(--cyan);"></i> port_profile</td><td>standard (19)</td><td style="color:var(--accent);">quick (5)</td><td><span style="color:var(--muted);">200K × 19 is brutal</span></td></tr>
+                        <tr><td><i class="bi bi-arrow-repeat" style="color:var(--accent);"></i> Scanner mode</td><td>nmap_only</td><td style="color:var(--accent);">two_phase</td><td><span style="color:var(--muted);">naabu → Nmap</span></td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div class="code-block" style="margin-top:16px; text-align:center;">
+                <span class="cm"># Enterprise: 200K+ hosts in hours, not weeks</span><br>
+                <span class="cmd">$</span> python run.py <span class="hl">-c entp_config.yaml</span> daemon
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 11: Dashboard -->
+    <div class="slide">
+        <div class="bg-radial"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-display"></i> DASHBOARD</h3>
+            <h2>Premium <span class="grad">Web Interface</span></h2>
+            <p>Vuexy-inspired design with ApexCharts, dark/light mode, optimized for 500K+ hosts.</p>
+            <div class="card-grid-3" style="margin-top:12px;">
+                <div class="card card-glow">
+                    <div class="icon-circle purple"><i class="bi bi-bar-chart-line"></i></div>
+                    <h4>Real-time Analytics</h4>
+                    <p>Area, donut, bar charts. Auto-refresh. 15s stats polling.</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle cyan"><i class="bi bi-share"></i></div>
+                    <h4>Network Map</h4>
+                    <p>vis.js subnet clusters. 200K+ hosts. Click to drill down.</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle red"><i class="bi bi-crosshair"></i></div>
+                    <h4>Red Team View</h4>
+                    <p>Crown jewels, pivot footholds, exploit-ready targets.</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle green"><i class="bi bi-grid-3x3-gap"></i></div>
+                    <h4>MITRE ATT&CK</h4>
+                    <p>Heatmap of coverage across all 14 tactics.</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle yellow"><i class="bi bi-terminal"></i></div>
+                    <h4>Live Logs</h4>
+                    <p>Real syslog-style file tail over SSE, severity filters, regex search, auto-scroll.</p>
+                </div>
+                <div class="card card-glow">
+                    <div class="icon-circle purple"><i class="bi bi-sliders"></i></div>
+                    <h4>Full Control</h4>
+                    <p>Scan triggers, credential spray, cron, config editor, profiles, webhooks.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 12: Red Team Workflow -->
+    <div class="slide">
+        <div class="bg-grid"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-crosshair2"></i> RED TEAM</h3>
+            <h2>4-Phase <span class="grad-warm">Engagement</span></h2>
+            <div style="display:grid; grid-template-columns:repeat(2, 1fr); gap:16px; margin-top:16px;">
+                <div class="card" style="border-left:3px solid var(--primary);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <span style="background:var(--primary); color:#fff; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">1</span>
+                        <h4>Silent Mapping</h4>
+                        <span class="tag tag-purple" style="margin-left:auto; font-size:10px;">Day 1-3</span>
+                    </div>
+                    <p>Start daemon. Maps entire network with stealth timing. Zero IDS alerts. Zero manual work.</p>
+                </div>
+                <div class="card" style="border-left:3px solid var(--cyan);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <span style="background:var(--cyan); color:#000; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">2</span>
+                        <h4>Intelligence Review</h4>
+                        <span class="tag tag-cyan" style="margin-left:auto; font-size:10px;">Day 3+</span>
+                    </div>
+                    <p>Dashboard shows no-auth services, SMB relay targets, expired certs, ML anomalies.</p>
+                </div>
+                <div class="card" style="border-left:3px solid var(--warning);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <span style="background:var(--warning); color:#000; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">3</span>
+                        <h4>Targeted Exploitation</h4>
+                        <span class="tag tag-yellow" style="margin-left:auto; font-size:10px;">Selective</span>
+                    </div>
+                    <p>Trigger Nuclei against ML-flagged targets only. Rate-limited vuln scanning.</p>
+                </div>
+                <div class="card" style="border-left:3px solid var(--accent);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <span style="background:var(--accent); color:#000; width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700;">4</span>
+                        <h4>Report & Export</h4>
+                        <span class="tag tag-green" style="margin-left:auto; font-size:10px;">Deliverable</span>
+                    </div>
+                    <p>JSON, CSV, Markdown. C2 formats: Cobalt Strike, Metasploit, Sliver, nmap XML.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 13: Export & Security -->
+    <div class="slide">
+        <div class="bg-radial-cyan"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-shield-lock"></i> OPSEC & OUTPUT</h3>
+            <h2>Built for <span class="grad-green">Operators</span></h2>
+            <div class="card-grid-2" style="margin-top:12px;">
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle green"><i class="bi bi-box-arrow-up"></i></div>
+                        <h4 style="font-size:16px;">Export Formats</h4>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                        <span class="tag tag-purple"><i class="bi bi-filetype-json"></i> JSON</span>
+                        <span class="tag tag-cyan"><i class="bi bi-file-spreadsheet"></i> CSV</span>
+                        <span class="tag tag-green"><i class="bi bi-markdown"></i> Markdown</span>
+                        <span class="tag tag-yellow"><i class="bi bi-list-ul"></i> IPs / Targets / URLs</span>
+                        <span class="tag tag-red"><i class="bi bi-crosshair"></i> Cobalt Strike</span>
+                        <span class="tag tag-purple"><i class="bi bi-terminal"></i> Metasploit</span>
+                        <span class="tag tag-cyan"><i class="bi bi-code-square"></i> Sliver</span>
+                        <span class="tag tag-green"><i class="bi bi-file-code"></i> nmap XML</span>
+                    </div>
+                    <p style="margin-top:12px;"><i class="bi bi-bell" style="color:var(--warning);"></i> Webhook auto-alerts to Slack, Discord, Teams on critical findings.</p>
+                </div>
+                <div class="card">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle red"><i class="bi bi-shield-shaded"></i></div>
+                        <h4 style="font-size:16px;">OpSec Hardening</h4>
+                    </div>
+                    <ul class="feat-list" style="font-size:13px;">
+                        <li>Login rate-limiting (5 attempts → 60s lockout)</li>
+                        <li>30-min idle session auto-logout</li>
+                        <li>Loopback binding by default (network bind is opt-in)</li>
+                        <li>File-only logging (zero console footprint)</li>
+                        <li>Self-destruct wipe command</li>
+                        <li>Scan resume after crash/restart</li>
+                        <li>Config validation on startup</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SLIDE 14: Hardening & Audit -->
+    <div class="slide">
+        <div class="bg-radial"></div>
+        <div class="slide-content">
+            <h3><i class="bi bi-shield-check"></i> HARDENING & AUDIT</h3>
+            <h2>Stealth Fixes <span class="grad-green">& Security Audit</span></h2>
+            <div class="card-grid-2" style="margin-top:12px;">
+                <div class="card" style="border-color:rgba(6,214,160,0.3);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle green"><i class="bi bi-check2-circle"></i></div>
+                        <h4 style="font-size:16px;">Shipped This Week</h4>
+                    </div>
+                    <ul class="feat-list" style="font-size:13px;">
+                        <li><strong>Nuclei template auto-update gated</strong> — no phone-home to GitHub before every scan (config: <span class="mono" style="color:var(--cyan);">update_templates: false</span>)</li>
+                        <li><strong>Nuclei timeout scaling fixed</strong> — real target count drives timeout, no more silent 5-min kills on large scans</li>
+                        <li><strong>Binary path resolved once</strong> at init — PATH changes mid-daemon can't break scans</li>
+                        <li><strong>Dead config keys wired</strong> — <span class="mono" style="color:var(--cyan);">templates_path</span> now honored</li>
+                        <li><strong>Deps completed</strong> — <span class="mono" style="color:var(--cyan);">dnspython</span> (DNS recon) + <span class="mono" style="color:var(--cyan);">aiohttp</span> (async cred checking)</li>
+                        <li><strong>Windows installer</strong> — <span class="mono" style="color:var(--cyan);">install.ps1</span> with PATH-safe tool placement</li>
+                        <li><strong>Version + license sync</strong> — 1.0.0 everywhere, MIT LICENSE added</li>
+                    </ul>
+                </div>
+                <div class="card" style="border-color:rgba(251,191,36,0.3);">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+                        <div class="icon-circle yellow"><i class="bi bi-lightbulb"></i></div>
+                        <h4 style="font-size:16px;">Audit Findings</h4>
+                    </div>
+                    <ul class="feat-list" style="font-size:13px;">
+                        <li><strong>Default cred</strong> <span class="mono" style="color:var(--cyan);">admin/hostvigil</span> recreated at startup — provision at first boot</li>
+                        <li><strong>Session-only auth</strong> — API keys exist (<span class="mono" style="color:var(--cyan);">enterprise.py</span>) but aren't wired into the dashboard</li>
+                        <li><strong>No CSRF tokens</strong> on state-changing routes</li>
+                        <li><strong>Rate-limit lockout is per-IP, in-memory</strong> — bypassable across IPs/restarts</li>
+                        <li><strong>Container runs as root</strong> with NET_RAW/NET_ADMIN + host networking</li>
+                        <li><strong>Dead modules</strong> — <span class="mono" style="color:var(--cyan);">scheduler.py</span>, <span class="mono" style="color:var(--cyan);">enterprise_pipeline.py</span>, <span class="mono" style="color:var(--cyan);">plugins.py</span>, <span class="mono" style="color:var(--cyan);">pcap_export.py</span> never wired</li>
+                        <li><strong>Dormant config</strong> — <span class="mono" style="color:var(--cyan);">pipeline.*</span> 100% dead; stealth YAML keys mostly ignored</li>
+                    </ul>
+                </div>
+            </div>
+            <p style="font-size:12px; text-align:center; margin-top:8px; color:var(--muted);">
+                <i class="bi bi-shield-plus"></i> Positives: no command injection · no SQL injection · parameterized queries throughout · WAL mode everywhere · no shell=True
+            </p>
+        </div>
+    </div>
+
+    <!-- SLIDE 15: Closing -->
+    <div class="slide title-center">
+        <div class="bg-grid"></div>
+        <div class="bg-radial"></div>
+        <div class="slide-content" style="align-items:center; position:relative; z-index:1;">
+            <div style="width:72px; height:72px; border-radius:18px; background:linear-gradient(135deg, var(--primary), var(--accent)); display:flex; align-items:center; justify-content:center; font-size:32px; margin-bottom:8px; animation: glow 3s infinite; box-shadow: var(--glow-purple);">
+                <i class="bi bi-ghost" style="color:#fff;"></i>
+            </div>
+            <h1 class="grad" style="margin-top:8px;">The Ghost in Your Network</h1>
+            <p style="font-size:clamp(16px, 1.8vw, 22px); max-width:650px; text-align:center;">
+                Self-learning. Stealth-first. Red team ready.<br>
+                <span style="color:var(--text);">Open source. No cloud. No telemetry. No bloat.</span>
+            </p>
+            <div class="code-block" style="margin-top:24px; text-align:center; font-size:15px; padding:16px 32px;">
+                <span class="cmd">$</span> git clone <span class="str">https://github.com/bidhata/HostVigil.git</span>
+            </div>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:20px;">
+                <span class="tag tag-purple"><i class="bi bi-github"></i> github.com/bidhata/HostVigil</span>
+                <span class="tag tag-cyan"><i class="bi bi-globe"></i> krishnendu.com</span>
+                <span class="tag tag-green"><i class="bi bi-award"></i> MIT License</span>
+            </div>
+            <p style="margin-top:28px; font-size:18px; color:var(--text);">
+                <i class="bi bi-star-fill" style="color:var(--warning);"></i> Star if it helps your assessments
+            </p>
+        </div>
+    </div>
+
+    </div><!-- end slide-deck -->
+
+    <!-- Navigation -->
+    <div class="nav-controls">
+        <button class="nav-btn" onclick="prevSlide()" title="Previous (←)"><i class="bi bi-chevron-left"></i></button>
+        <span class="slide-num"><span id="current">1</span> / <span id="total">15</span></span>
+        <button class="nav-btn" onclick="nextSlide()" title="Next (→)"><i class="bi bi-chevron-right"></i></button>
+    </div>
+
+    <script>
+        let current = 1;
+        const slides = document.querySelectorAll('.slide');
+        const total = slides.length;
+        document.getElementById('total').textContent = total;
+
+        function showSlide(n) {
+            if (n < 1) n = 1;
+            if (n > total) n = total;
+            current = n;
+            slides.forEach((s, i) => {
+                if (i === n - 1) {
+                    s.classList.add('active');
+                } else {
+                    s.classList.remove('active');
+                }
+            });
+            document.getElementById('current').textContent = n;
+            document.getElementById('progressBar').style.width = (n / total * 100) + '%';
+        }
+
+        function nextSlide() { showSlide(current + 1); }
+        function prevSlide() { showSlide(current - 1); }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); nextSlide(); }
+            if (e.key === 'ArrowLeft') { e.preventDefault(); prevSlide(); }
+            if (e.key === 'Home') { e.preventDefault(); showSlide(1); }
+            if (e.key === 'End') { e.preventDefault(); showSlide(total); }
+            if (e.key === 'f' || e.key === 'F') {
+                if (!document.fullscreenElement) { document.documentElement.requestFullscreen(); }
+                else { document.exitFullscreen(); }
+            }
+        });
+
+        // Touch swipe
+        let touchX = 0;
+        document.addEventListener('touchstart', e => { touchX = e.changedTouches[0].screenX; });
+        document.addEventListener('touchend', e => {
+            const diff = e.changedTouches[0].screenX - touchX;
+            if (diff < -50) nextSlide();
+            if (diff > 50) prevSlide();
+        });
+
+        showSlide(1);
+
+        // Hide key hint after first interaction
+        document.addEventListener('keydown', () => {
+            document.querySelector('.key-hint').style.opacity = '0';
+        }, { once: true });
+    </script>
+</body>
+</html>

@@ -1,0 +1,613 @@
+{% extends "base.html" %}
+
+{% block title %}Live Logs — HostVigil{% endblock %}
+
+{% block page_title %}Live Logs{% endblock %}
+{% block page_subtitle %}Real-time streaming log output{% endblock %}
+
+{% block page_actions %}
+<div class="d-flex gap-2">
+    <button class="btn btn-sm btn-outline" id="btnClearLogs" title="Clear log view">
+        <i class="bi bi-trash3"></i> <span class="d-none d-lg-inline">Clear</span>
+    </button>
+    <button class="btn btn-sm btn-outline" id="btnPauseLogs" title="Pause/resume stream">
+        <i class="bi bi-pause-fill" id="pauseIcon"></i> <span class="d-none d-lg-inline" id="pauseLabel">Pause</span>
+    </button>
+    <button class="btn btn-sm btn-outline" id="btnScrollBottom" title="Scroll to bottom">
+        <i class="bi bi-arrow-down-circle"></i>
+    </button>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* --- Live Logs Page --- */
+.log-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    flex-wrap: wrap;
+}
+
+.log-filters {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.log-filter-btn {
+    padding: 4px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+}
+
+.log-filter-btn:hover {
+    background: var(--bg-hover);
+    color: var(--text-primary);
+}
+
+.log-filter-btn.active {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: #fff;
+}
+
+.log-filter-btn.active[data-level="ERROR"] {
+    background: var(--danger);
+    border-color: var(--danger);
+}
+
+.log-filter-btn.active[data-level="WARNING"] {
+    background: var(--warning);
+    border-color: var(--warning);
+    color: #1a1a2e;
+}
+
+.log-filter-btn.active[data-level="INFO"] {
+    background: var(--info);
+    border-color: var(--info);
+}
+
+.log-filter-btn.active[data-level="DEBUG"] {
+    background: var(--text-muted);
+    border-color: var(--text-muted);
+}
+
+.log-search {
+    flex: 1;
+    min-width: 200px;
+}
+
+.log-search input {
+    width: 100%;
+    padding: 6px 12px;
+    font-size: 0.8rem;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    background: var(--bg-body);
+    color: var(--text-primary);
+    outline: none;
+    transition: border-color 0.15s;
+}
+
+.log-search input:focus {
+    border-color: var(--primary);
+}
+
+.log-search input::placeholder {
+    color: var(--text-muted);
+}
+
+.log-stats {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.log-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+    height: calc(100vh - 300px);
+    min-height: 400px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+}
+
+.log-entries {
+    padding: 8px 0;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+}
+
+.log-entry {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 4px 16px;
+    transition: background 0.1s;
+    border-left: 3px solid transparent;
+}
+
+.log-entry:hover {
+    background: var(--bg-hover);
+}
+
+.log-entry.level-ERROR {
+    border-left-color: var(--danger);
+}
+
+.log-entry.level-WARNING {
+    border-left-color: var(--warning);
+}
+
+.log-timestamp {
+    color: var(--text-muted);
+    white-space: nowrap;
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    opacity: 0.7;
+    min-width: 80px;
+}
+
+.log-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1px 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    border-radius: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    min-width: 52px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.log-badge.badge-ERROR {
+    background: var(--danger);
+    color: #fff;
+}
+
+.log-badge.badge-WARNING {
+    background: var(--warning);
+    color: #1a1a2e;
+}
+
+.log-badge.badge-INFO {
+    background: var(--info);
+    color: #fff;
+}
+
+.log-badge.badge-DEBUG {
+    background: var(--text-muted);
+    color: #fff;
+    opacity: 0.7;
+}
+
+.log-badge.badge-SCAN {
+    background: var(--success);
+    color: #fff;
+}
+
+.log-message {
+    color: var(--text-primary);
+    word-break: break-word;
+    flex: 1;
+}
+
+.log-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    min-height: 300px;
+    color: var(--text-muted);
+    gap: 12px;
+}
+
+.log-empty i {
+    font-size: 3rem;
+    opacity: 0.3;
+}
+
+.log-empty p {
+    font-size: 0.9rem;
+}
+
+.log-paused-banner {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    padding: 6px 16px;
+    background: var(--warning);
+    color: #1a1a2e;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-align: center;
+    display: none;
+}
+
+.log-paused-banner.visible {
+    display: block;
+}
+
+.log-connection-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+}
+
+.log-connection-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);
+}
+
+.log-connection-dot.connected {
+    background: var(--success);
+    box-shadow: 0 0 4px var(--success);
+}
+
+.log-connection-dot.disconnected {
+    background: var(--danger);
+}
+
+/* Scroll-to-bottom indicator */
+.scroll-indicator {
+    position: absolute;
+    bottom: 16px;
+    right: 16px;
+    padding: 6px 12px;
+    background: var(--primary);
+    color: #fff;
+    border-radius: var(--radius-sm);
+    font-size: 0.72rem;
+    font-weight: 600;
+    cursor: pointer;
+    opacity: 0;
+    transform: translateY(10px);
+    transition: all 0.2s ease;
+    pointer-events: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.scroll-indicator.visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="log-toolbar">
+    <div class="log-filters">
+        <button class="log-filter-btn active" data-level="ALL">All</button>
+        <button class="log-filter-btn" data-level="ERROR">Error</button>
+        <button class="log-filter-btn" data-level="WARNING">Warning</button>
+        <button class="log-filter-btn" data-level="INFO">Info</button>
+        <button class="log-filter-btn" data-level="DEBUG">Debug</button>
+    </div>
+    <div class="log-search">
+        <input type="text" id="logSearchInput" placeholder="Filter logs... (regex supported)" autocomplete="off">
+    </div>
+    <div class="log-stats">
+        <span class="log-connection-status">
+            <span class="log-connection-dot" id="connectionDot"></span>
+            <span id="connectionLabel">Connecting...</span>
+        </span>
+        &nbsp;|&nbsp;
+        <span id="logCount">0</span> entries
+    </div>
+</div>
+
+<div class="log-panel" id="logPanel">
+    <div class="log-paused-banner" id="pausedBanner">
+        <i class="bi bi-pause-circle"></i> Stream paused — scroll down or click Resume to continue auto-scroll
+    </div>
+    <div class="log-entries" id="logEntries">
+        <div class="log-empty" id="logEmpty">
+            <i class="bi bi-terminal"></i>
+            <p>Waiting for log entries...</p>
+            <span style="font-size: 0.75rem;">Logs will appear here as HostVigil operates. Start a scan to generate activity.</span>
+        </div>
+    </div>
+    <div class="scroll-indicator" id="scrollIndicator" title="Scroll to bottom">
+        <i class="bi bi-arrow-down"></i> New logs
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    'use strict';
+
+    // --- DOM Elements ---
+    var logPanel = document.getElementById('logPanel');
+    var logEntries = document.getElementById('logEntries');
+    var logEmpty = document.getElementById('logEmpty');
+    var logCount = document.getElementById('logCount');
+    var connectionDot = document.getElementById('connectionDot');
+    var connectionLabel = document.getElementById('connectionLabel');
+    var pausedBanner = document.getElementById('pausedBanner');
+    var scrollIndicator = document.getElementById('scrollIndicator');
+    var searchInput = document.getElementById('logSearchInput');
+    var pauseIcon = document.getElementById('pauseIcon');
+    var pauseLabel = document.getElementById('pauseLabel');
+
+    // --- State ---
+    var allLogs = [];
+    var activeFilter = 'ALL';
+    var searchTerm = '';
+    var isPaused = false;
+    var userScrolledUp = false;
+    var eventSource = null;
+    var totalCount = 0;
+    var MAX_LOGS = 2000;
+
+    // --- Filter Buttons ---
+    var filterBtns = document.querySelectorAll('.log-filter-btn');
+    filterBtns.forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            filterBtns.forEach(function(b) { b.classList.remove('active'); });
+            btn.classList.add('active');
+            activeFilter = btn.getAttribute('data-level');
+            renderLogs();
+        });
+    });
+
+    // --- Search ---
+    var searchTimeout = null;
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(function() {
+            searchTerm = searchInput.value.trim();
+            renderLogs();
+        }, 200);
+    });
+
+    // --- Scroll Detection ---
+    logPanel.addEventListener('scroll', function() {
+        var atBottom = logPanel.scrollHeight - logPanel.scrollTop - logPanel.clientHeight < 60;
+        if (atBottom) {
+            userScrolledUp = false;
+            scrollIndicator.classList.remove('visible');
+            pausedBanner.classList.remove('visible');
+        } else {
+            userScrolledUp = true;
+        }
+    });
+
+    // --- Scroll to Bottom ---
+    function scrollToBottom() {
+        logPanel.scrollTop = logPanel.scrollHeight;
+        userScrolledUp = false;
+        scrollIndicator.classList.remove('visible');
+        pausedBanner.classList.remove('visible');
+    }
+
+    scrollIndicator.addEventListener('click', scrollToBottom);
+    document.getElementById('btnScrollBottom').addEventListener('click', scrollToBottom);
+
+    // --- Clear Logs ---
+    document.getElementById('btnClearLogs').addEventListener('click', function() {
+        allLogs = [];
+        totalCount = 0;
+        logCount.textContent = '0';
+        renderLogs();
+    });
+
+    // --- Pause/Resume ---
+    document.getElementById('btnPauseLogs').addEventListener('click', function() {
+        isPaused = !isPaused;
+        if (isPaused) {
+            pauseIcon.className = 'bi bi-play-fill';
+            pauseLabel.textContent = 'Resume';
+            pausedBanner.classList.add('visible');
+        } else {
+            pauseIcon.className = 'bi bi-pause-fill';
+            pauseLabel.textContent = 'Pause';
+            pausedBanner.classList.remove('visible');
+            renderLogs();
+            scrollToBottom();
+        }
+    });
+
+    // --- Render Logs ---
+    function renderLogs() {
+        var filtered = allLogs.filter(function(log) {
+            // Level filter
+            if (activeFilter !== 'ALL' && log.level !== activeFilter) return false;
+            // Search filter
+            if (searchTerm) {
+                try {
+                    var regex = new RegExp(searchTerm, 'i');
+                    return regex.test(log.message) || regex.test(log.level) || regex.test(log.time || '');
+                } catch(e) {
+                    return (log.message || '').toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1;
+                }
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            logEntries.innerHTML = '';
+            logEntries.appendChild(logEmpty);
+            logEmpty.style.display = 'flex';
+            return;
+        }
+
+        logEmpty.style.display = 'none';
+
+        // Build HTML
+        var html = '';
+        for (var i = 0; i < filtered.length; i++) {
+            var log = filtered[i];
+            var level = (log.level || 'INFO').toUpperCase();
+            var ts = formatTimestamp(log.time);
+            var msg = escapeHtml(log.message || '');
+            html += '<div class="log-entry level-' + level + '">';
+            html += '<span class="log-timestamp">' + ts + '</span>';
+            html += '<span class="log-badge badge-' + level + '">' + level + '</span>';
+            html += '<span class="log-message">' + msg + '</span>';
+            html += '</div>';
+        }
+        logEntries.innerHTML = html;
+
+        logCount.textContent = totalCount.toString();
+    }
+
+    // --- Helpers ---
+    function formatTimestamp(isoStr) {
+        if (!isoStr) return '--:--:--';
+        try {
+            var d = new Date(isoStr);
+            var h = d.getHours().toString().padStart(2, '0');
+            var m = d.getMinutes().toString().padStart(2, '0');
+            var s = d.getSeconds().toString().padStart(2, '0');
+            return h + ':' + m + ':' + s;
+        } catch(e) {
+            return isoStr.substring(11, 19) || '--:--:--';
+        }
+    }
+
+    function escapeHtml(text) {
+        var div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // --- SSE Connection ---
+    function connectSSE() {
+        if (eventSource) {
+            eventSource.close();
+        }
+
+        connectionDot.className = 'log-connection-dot';
+        connectionLabel.textContent = 'Connecting...';
+
+        eventSource = new EventSource('/api/logs/stream');
+
+        eventSource.onopen = function() {
+            connectionDot.className = 'log-connection-dot connected';
+            connectionLabel.textContent = 'Connected';
+        };
+
+        eventSource.onmessage = function(event) {
+            if (isPaused) return;
+
+            try {
+                var log = JSON.parse(event.data);
+                allLogs.push(log);
+                totalCount++;
+
+                // Trim old entries
+                if (allLogs.length > MAX_LOGS) {
+                    allLogs = allLogs.slice(-MAX_LOGS);
+                }
+
+                // Check if matches current filter
+                var level = (log.level || 'INFO').toUpperCase();
+                var matchesFilter = (activeFilter === 'ALL' || level === activeFilter);
+                var matchesSearch = true;
+                if (searchTerm) {
+                    try {
+                        var regex = new RegExp(searchTerm, 'i');
+                        matchesSearch = regex.test(log.message) || regex.test(log.level);
+                    } catch(e) {
+                        matchesSearch = (log.message || '').toLowerCase().indexOf(searchTerm.toLowerCase()) !== -1;
+                    }
+                }
+
+                if (matchesFilter && matchesSearch) {
+                    logEmpty.style.display = 'none';
+                    var entry = document.createElement('div');
+                    entry.className = 'log-entry level-' + level;
+                    entry.innerHTML =
+                        '<span class="log-timestamp">' + formatTimestamp(log.time) + '</span>' +
+                        '<span class="log-badge badge-' + level + '">' + level + '</span>' +
+                        '<span class="log-message">' + escapeHtml(log.message || '') + '</span>';
+                    logEntries.appendChild(entry);
+
+                    // Trim DOM entries
+                    while (logEntries.children.length > MAX_LOGS + 1) {
+                        logEntries.removeChild(logEntries.children[0]);
+                    }
+                }
+
+                logCount.textContent = totalCount.toString();
+
+                // Auto-scroll
+                if (!userScrolledUp) {
+                    scrollToBottom();
+                } else {
+                    scrollIndicator.classList.add('visible');
+                    pausedBanner.classList.add('visible');
+                }
+            } catch(e) {
+                // Ignore parse errors
+            }
+        };
+
+        eventSource.addEventListener('timeout', function() {
+            connectionDot.className = 'log-connection-dot disconnected';
+            connectionLabel.textContent = 'Timeout — Reconnecting...';
+            eventSource.close();
+            setTimeout(connectSSE, 3000);
+        });
+
+        eventSource.onerror = function() {
+            connectionDot.className = 'log-connection-dot disconnected';
+            connectionLabel.textContent = 'Disconnected — Reconnecting...';
+            eventSource.close();
+            setTimeout(connectSSE, 5000);
+        };
+    }
+
+    // --- Load existing log buffer on page load ---
+    fetch('/api/logs/history')
+        .then(function(r) { return r.ok ? r.json() : []; })
+        .then(function(logs) {
+            if (logs && logs.length) {
+                allLogs = logs;
+                totalCount = logs.length;
+                renderLogs();
+                scrollToBottom();
+            }
+            // Start SSE after loading history
+            connectSSE();
+        })
+        .catch(function() {
+            // Fallback: just start SSE
+            connectSSE();
+        });
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', function() {
+        if (eventSource) eventSource.close();
+    });
+})();
+</script>
+{% endblock %}

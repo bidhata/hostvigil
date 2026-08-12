@@ -1,0 +1,291 @@
+{% extends "base.html" %}
+
+{% block title %}Anomalies — HostVigil{% endblock %}
+{% block page_title %}Anomalies{% endblock %}
+{% block page_subtitle %}ML-detected drift across your fleet — new hosts, ports, and behavioral deviations with confidence scoring.{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-ghost" onclick="loadAnomalies()" title="Refresh">
+    <i class="bi bi-arrow-clockwise"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Summary Row -->
+<div class="row mb-2">
+    <div class="col-4 col-sm-12">
+        <div class="stat-card animate-fade-in-up" id="card-high-conf">
+            <div class="stat-icon danger"><i class="bi bi-exclamation-diamond-fill"></i></div>
+            <div class="stat-content"><h3 id="cnt-high-conf">0</h3><p>High Confidence</p></div>
+        </div>
+    </div>
+    <div class="col-4 col-sm-12">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.05s;">
+            <div class="stat-icon warning"><i class="bi bi-graph-up-arrow"></i></div>
+            <div class="stat-content"><h3 id="cnt-total-anomalies">0</h3><p>Total Anomalies</p></div>
+        </div>
+    </div>
+    <div class="col-4 col-sm-12">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.1s;">
+            <div class="stat-icon success"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-content"><h3 id="cnt-reviewed">0</h3><p>Reviewed</p></div>
+        </div>
+    </div>
+</div>
+
+<!-- Score Distribution Chart + Table -->
+<div class="row">
+    <div class="col-4 col-lg-12">
+        <div class="card animate-fade-in-up" style="animation-delay:0.15s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-bar-chart-fill text-primary"></i> Score Distribution</div>
+                    <div class="card-subtitle">Anomaly confidence buckets across all detections</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="chart-container-sm" id="chartScoreDist">
+                    <div class="loading-overlay" id="chartLoader"><div class="text-center"><div class="spinner" style="width:28px;height:28px;border-width:3px;"></div></div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-8 col-lg-12">
+        <div class="card animate-fade-in-up" style="animation-delay:0.2s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-activity text-info"></i> Detected Anomalies</div>
+                    <div class="card-subtitle">Flagged events awaiting review — click the thumb icons to train the model</div>
+                </div>
+                <span class="text-xs text-muted" id="anomalyCount"><i class="bi bi-activity me-1"></i> Loading...</span>
+            </div>
+            <div class="table-toolbar">
+                <div class="header-search search-input">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="anomalySearch" placeholder="Search by host, description..." autocomplete="off">
+                </div>
+                <select class="form-control" id="anomalyFilter" style="width:auto;min-width:130px;">
+                    <option value="">All Types</option>
+                    <option value="new_host">New Host</option>
+                    <option value="new_port">New Port</option>
+                    <option value="banner_change">Banner Change</option>
+                    <option value="disappeared_host">Disappeared</option>
+                    <option value="ml_anomaly">ML Anomaly</option>
+                </select>
+                <div class="flex-1"></div>
+                <button class="btn btn-sm btn-ghost" onclick="loadAnomalies()" title="Refresh"><i class="bi bi-arrow-clockwise"></i></button>
+            </div>
+            <div class="table-wrapper" style="max-height:480px;overflow-y:auto;">
+                <table class="table table-sm">
+                    <thead><tr><th style="width:120px;">Confidence</th><th>Type</th><th>Host</th><th>Description</th><th style="width:110px;">Detected</th><th style="width:90px;">Action</th></tr></thead>
+                    <tbody id="anomalyTableBody">
+                        {% for i in range(6) %}
+                        <tr><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:80px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:180px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:80px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:60px;display:inline-block;"></span></td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Feedback History Quick View -->
+<div class="row mt-3">
+    <div class="col-12">
+        <div class="card animate-fade-in-up" style="animation-delay:0.25s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-lightbulb text-warning"></i> ML Feedback Loop</div>
+                    <div class="card-subtitle">How your verdicts are shaping detection accuracy</div>
+                </div>
+                <span class="text-xs text-muted" id="feedbackSummary">—</span>
+            </div>
+            <div class="card-body" id="feedbackBody" style="max-height:180px;overflow-y:auto;">
+                <div class="text-center text-muted py-3">
+                    <span class="spinner" style="border-width:3px;width:24px;height:24px;"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var allAnomalies = [];
+    var chartInstance = null;
+
+    function loadAnomalies() {
+        fetch('/api/anomalies')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                allAnomalies = data.anomalies || [];
+                updateCounts();
+                renderChart();
+                renderTable();
+                loadFeedback(data);
+            })
+            .catch(function() {
+                document.getElementById('anomalyTableBody').innerHTML = '<tr><td colspan="6" class="text-center" style="padding:2.5rem;"><i class="bi bi-exclamation-triangle text-danger" style="font-size:2rem;display:block;opacity:0.5;margin-bottom:0.5rem;"></i>Failed to load anomalies. <button class="btn btn-sm btn-ghost mt-2" onclick="loadAnomalies()"><i class="bi bi-arrow-clockwise"></i> Retry</button></td></tr>';
+            });
+    }
+
+    function loadFeedback(data) {
+        var summary = data.feedback_summary || {};
+        document.getElementById('feedbackSummary').textContent =
+            'True positives: ' + (summary.true_positives || 0) +
+            ' | False positives: ' + (summary.false_positives || 0) +
+            ' | Unreviewed: ' + (summary.unreviewed || 0);
+
+        var recent = data.recent_feedback || [];
+        var el = document.getElementById('feedbackBody');
+        if (!recent.length) {
+            el.innerHTML = '<div class="empty-state py-3"><i class="bi bi-chat-square-text"></i><p class="text-sm">No feedback submitted yet. Use the <i class="bi bi-check"></i>/<i class="bi bi-x"></i> buttons to train the ML model.</p></div>';
+            return;
+        }
+        var html = '<table class="table table-sm"><thead><tr><th>Anomaly</th><th>Verdict</th><th>Time</th></tr></thead><tbody>';
+        recent.slice(0, 20).forEach(function(f) {
+            var desc = (f.description || f.anomaly_type || '').substring(0, 60);
+            var icon = f.is_true_positive ? '<span class="badge badge-success badge-pill"><i class="bi bi-check me-1"></i>True Positive</span>' : '<span class="badge badge-danger badge-pill"><i class="bi bi-x me-1"></i>False Positive</span>';
+            html += '<tr><td class="text-sm">' + desc + '</td><td>' + icon + '</td><td class="text-xs text-muted">' + formatTime(f.created_at) + '</td></tr>';
+        });
+        html += '</tbody></table>';
+        el.innerHTML = html;
+    }
+
+    function updateCounts() {
+        var high = allAnomalies.filter(function(a) { return a.score >= 0.8; }).length;
+        var reviewed = allAnomalies.filter(function(a) { return a.is_reviewed; }).length;
+
+        animateNum('cnt-high-conf', high);
+        animateNum('cnt-total-anomalies', allAnomalies.length);
+        animateNum('cnt-reviewed', reviewed);
+
+        document.getElementById('anomalyCount').innerHTML = '<i class="bi bi-activity me-1"></i> ' + allAnomalies.length.toLocaleString() + ' anomalies';
+    }
+
+    function animateNum(id, val) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var c = parseInt(el.textContent) || 0;
+        if (c === val) return;
+        var s = null;
+        function step(t) { if (!s) s = t; var p = Math.min((t - s) / 500, 1); el.textContent = Math.round(c + (val - c) * (1 - Math.pow(1 - p, 3))).toLocaleString(); if (p < 1) requestAnimationFrame(step); }
+        requestAnimationFrame(step);
+    }
+
+    function renderChart() {
+        var loader = document.getElementById('chartLoader');
+        if (loader) loader.style.display = 'none';
+
+        var buckets = [0, 0, 0, 0, 0];
+        allAnomalies.forEach(function(a) {
+            var idx = Math.min(4, Math.floor(a.score * 5));
+            buckets[idx]++;
+        });
+
+        var el = document.getElementById('chartScoreDist');
+        if (allAnomalies.length === 0) {
+            el.innerHTML = '<div class="empty-state"><i class="bi bi-graph-up"></i><h4>No anomaly data yet</h4><p class="text-sm">ML analysis will populate data here.</p></div>';
+            return;
+        }
+
+        if (chartInstance) chartInstance.destroy();
+        chartInstance = new ApexCharts(el, {
+            chart: { type: 'bar', height: 220, fontFamily: 'Inter, sans-serif', toolbar: { show: false } },
+            series: [{ name: 'Anomalies', data: buckets }],
+            xaxis: { categories: ['0–0.2', '0.2–0.4', '0.4–0.6', '0.6–0.8', '0.8–1.0'], labels: { style: { fontSize: '10px' } } },
+            colors: ['#7367f0'],
+            plotOptions: { bar: { borderRadius: 6, columnWidth: '55%', distributed: true,
+                colors: {
+                    backgroundBarColors: ['rgba(115,103,240,0.05)','rgba(115,103,240,0.05)','rgba(115,103,240,0.05)','rgba(255,159,67,0.1)','rgba(234,84,85,0.1)'],
+                    backgroundBarRadius: 6
+                }
+            }},
+            dataLabels: { enabled: true, style: { fontSize: '10px', fontWeight: 650, colors: [getComputedStyle(document.documentElement).getPropertyValue('--text-heading').trim() || '#2d2b3d'] } },
+            grid: { borderColor: getChartGridColor(), strokeDashArray: 4 },
+            theme: getChartTheme()
+        });
+        chartInstance.render();
+    }
+
+    function renderTable() {
+        var search = document.getElementById('anomalySearch').value.toLowerCase();
+        var typeFilter = document.getElementById('anomalyFilter').value;
+        var filtered = allAnomalies.filter(function(a) {
+            if (typeFilter && a.anomaly_type !== typeFilter) return false;
+            if (search && ((a.description || '') + ' ' + (a.ip || '')).toLowerCase().indexOf(search) === -1) return false;
+            return true;
+        });
+
+        document.getElementById('anomalyCount').innerHTML = '<i class="bi bi-activity me-1"></i> ' + filtered.length.toLocaleString() + ' / ' + allAnomalies.length.toLocaleString();
+
+        var tbody = document.getElementById('anomalyTableBody');
+        if (filtered.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><i class="bi bi-check-circle-fill"></i><h4>No anomalies found</h4><p class="text-sm">' + (allAnomalies.length > 0 ? 'Try adjusting your filters.' : 'The ML engine hasn\'t detected anything unusual yet.') + '</p></div></td></tr>';
+            return;
+        }
+
+        var html = '';
+        filtered.slice(0, 150).forEach(function(a, i) {
+            var barClass = a.score >= 0.8 ? 'danger' : a.score >= 0.5 ? 'warning' : 'info';
+            var sevClass = a.score >= 0.8 ? 'danger' : a.score >= 0.5 ? 'warning' : 'info';
+            var reviewed = a.is_reviewed ? '<i class="bi bi-check-circle-fill text-success ms-1" title="Reviewed"></i>' : '';
+            html += '<tr style="animation:fadeInUp 0.25s ease;animation-delay:' + (i * 0.02) + 's;animation-fill-mode:both;">';
+            html += '<td><div class="d-flex align-center gap-2"><div class="progress" style="width:55px;height:6px;"><div class="progress-bar ' + barClass + '" style="width:' + Math.min(a.score * 100, 100) + '%"></div></div><span class="text-xs font-mono font-bold">' + a.score.toFixed(2) + '</span>' + reviewed + '</div></td>';
+            html += '<td><span class="badge badge-' + sevClass + ' badge-pill">' + escapeHtml(a.anomaly_type || 'unknown') + '</span></td>';
+            html += '<td class="font-mono text-sm"><a href="/host/' + encodeURIComponent(a.ip || '') + '" class="font-bold">' + escapeHtml(a.ip || '—') + '</a></td>';
+            html += '<td class="text-sm truncate" style="max-width:280px;" title="' + escapeAttr(a.description || '') + '">' + escapeHtml(a.description || '—') + '</td>';
+            html += '<td class="text-xs text-muted">' + (a.detected_at ? formatTime(a.detected_at) : '—') + '</td>';
+            html += '<td><div class="d-flex gap-1">';
+            html += '<button class="btn btn-icon btn-sm" style="width:28px;height:28px;" onclick="feedbackAnomaly(' + a.id + ', true)" title="True positive"><i class="bi bi-hand-thumbs-up text-success" style="font-size:0.9rem;"></i></button>';
+            html += '<button class="btn btn-icon btn-sm" style="width:28px;height:28px;" onclick="feedbackAnomaly(' + a.id + ', false)" title="False positive"><i class="bi bi-hand-thumbs-down text-danger" style="font-size:0.9rem;"></i></button>';
+            html += '</div></td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+
+    window.feedbackAnomaly = function(id, isTrue) {
+        var btns = document.querySelectorAll('button[onclick*="feedbackAnomaly(' + id + '"]');
+        btns.forEach(function(b) { b.disabled = true; });
+
+        fetch('/api/anomalies/' + id + '/feedback', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({is_true_positive: isTrue})
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(data) {
+            showToast(isTrue ? 'True positive confirmed — model updated' : 'False positive flagged — model updated', 'success');
+            loadAnomalies();
+        })
+        .catch(function() {
+            showToast('Failed to submit feedback', 'error');
+            btns.forEach(function(b) { b.disabled = false; });
+        });
+    };
+
+    window.loadAnomalies = loadAnomalies;
+
+    document.getElementById('anomalySearch').addEventListener('input', function() {
+        clearTimeout(window._anomTimeout);
+        window._anomTimeout = setTimeout(renderTable, 250);
+    });
+    document.getElementById('anomalyFilter').addEventListener('change', renderTable);
+
+    function escapeAttr(s) { return (s || '').replace(/"/g, '&quot;'); }
+    function escapeHtml(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    loadAnomalies();
+})();
+</script>
+{% endblock %}

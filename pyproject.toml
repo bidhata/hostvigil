@@ -1,0 +1,89 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "hostvigil"
+version = "1.0.0"
+description = "Self-learning stealth reconnaissance platform for red teamers and pentesters"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.11"
+authors = [
+    {name = "Krishnendu Paul", email = "me@krishnendu.com"},
+]
+keywords = [
+    "red-team", "pentest", "reconnaissance", "network-scanner",
+    "stealth", "machine-learning", "anomaly-detection", "security",
+    "active-directory", "nmap", "vulnerability-scanner",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Environment :: Web Environment",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Security",
+    "Topic :: System :: Networking",
+]
+dependencies = [
+    "flask==3.1.3",
+    "pyyaml==6.0.3",
+    "numpy>=1.26,<3.0",
+    "scapy==2.7.0",
+    "paramiko==5.0.0",
+    "scikit-learn>=1.3,<2.0",
+    "APScheduler==3.11.3",
+    "psutil==7.2.2",
+    "ldap3==2.9.1",
+    "dnspython==2.7.0",
+    "aiohttp==3.11.11",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "ruff>=0.4.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/bidhata/HostVigil"
+Repository = "https://github.com/bidhata/HostVigil"
+Issues = "https://github.com/bidhata/HostVigil/issues"
+Documentation = "https://krishnendu.com"
+
+[project.scripts]
+hostvigil = "run:main"
+
+[tool.setuptools]
+py-modules = ["run"]
+
+[tool.setuptools.packages.find]
+include = ["hostvigil*"]
+
+[tool.setuptools.package-data]
+hostvigil = [
+    "dashboard/templates/*.html",
+    "dashboard/static/**/*",
+    "dashboard/static/vendor/**/*",
+    "stealth_configs/*.yaml",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "hostvigil/tests"]
+python_files = ["test_*.py"]

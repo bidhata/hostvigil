@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HostVigil{% endblock %}</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts/inter/inter.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="{{ url_for('static', filename='vendor/apexcharts.min.js') }}"></script>
+    {% block head_extra %}{% endblock %}
+    {% block extra_css %}{% endblock %}
+    <script>
+        (function() {
+            var saved = localStorage.getItem('hv-theme') || 'dark';
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+</head>
+<body>
+    <!-- Sidebar -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <a href="{{ url_for('index') }}" class="sidebar-brand">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="HostVigil">
+                <span>HostVigil</span>
+            </a>
+        </div>
+        <div class="sidebar-menu">
+            <div class="menu-section">Main</div>
+            <a href="{{ url_for('index') }}" class="menu-item {% if request.endpoint == 'index' %}active{% endif %}" data-tooltip="Dashboard">
+                <i class="bi bi-grid-1x2"></i><span>Dashboard</span>
+                <span class="menu-badge info" id="menuTotalHosts" style="display:none;">0</span>
+            </a>
+
+            <div class="menu-section">Recon</div>
+            <a href="{{ url_for('hosts') }}" class="menu-item {% if request.endpoint == 'hosts' %}active{% endif %}" data-tooltip="Hosts">
+                <i class="bi bi-hdd-stack"></i><span>Hosts</span>
+            </a>
+            <a href="{{ url_for('vulnerabilities') }}" class="menu-item {% if request.endpoint == 'vulnerabilities' %}active{% endif %}" data-tooltip="Vulnerabilities">
+                <i class="bi bi-shield-exclamation"></i><span>Vulnerabilities</span>
+                <span class="menu-badge danger" id="menuVulnBadge" style="display:none;">0</span>
+            </a>
+            <a href="{{ url_for('anomalies') }}" class="menu-item {% if request.endpoint == 'anomalies' %}active{% endif %}" data-tooltip="Anomalies">
+                <i class="bi bi-graph-up-arrow"></i><span>Anomalies</span>
+                <span class="menu-badge warning" id="menuAnomalyBadge" style="display:none;">0</span>
+            </a>
+
+            <div class="menu-section">Offense</div>
+            <a href="{{ url_for('redteam') }}" class="menu-item {% if request.endpoint == 'redteam' %}active{% endif %}" data-tooltip="Red Team">
+                <i class="bi bi-crosshair2"></i><span>Red Team</span>
+            </a>
+            <a href="{{ url_for('attack_paths') }}" class="menu-item {% if request.endpoint == 'attack_paths' %}active{% endif %}" data-tooltip="Attack Paths">
+                <i class="bi bi-diagram-3"></i><span>Attack Paths</span>
+            </a>
+            <a href="{{ url_for('mitre_heatmap') }}" class="menu-item {% if request.endpoint == 'mitre_heatmap' %}active{% endif %}" data-tooltip="MITRE ATT&CK">
+                <i class="bi bi-grid-3x3-gap"></i><span>MITRE ATT&CK</span>
+            </a>
+
+            <div class="menu-section">Operations</div>
+            <a href="{{ url_for('command_center') }}" class="menu-item {% if request.endpoint == 'command_center' %}active{% endif %}" data-tooltip="Command Center">
+                <i class="bi bi-command"></i><span>Command Center</span>
+            </a>
+            <a href="{{ url_for('scan_controls') }}" class="menu-item {% if request.endpoint == 'scan_controls' %}active{% endif %}" data-tooltip="Scan Controls">
+                <i class="bi bi-play-circle"></i><span>Scan Controls</span>
+                <span class="scan-dot" id="scanActiveDot" style="display:none;"></span>
+            </a>
+            <a href="{{ url_for('live_status') }}" class="menu-item {% if request.endpoint == 'live_status' %}active{% endif %}" data-tooltip="Live Status">
+                <i class="bi bi-broadcast-pin"></i><span>Live Status</span>
+            </a>
+            <a href="{{ url_for('logs_page') }}" class="menu-item {% if request.endpoint == 'logs_page' %}active{% endif %}" data-tooltip="Logs">
+                <i class="bi bi-terminal"></i><span>Logs</span>
+            </a>
+            <a href="{{ url_for('network_graph') }}" class="menu-item {% if request.endpoint == 'network_graph' %}active{% endif %}" data-tooltip="Network Map">
+                <i class="bi bi-share"></i><span>Network Map</span>
+            </a>
+
+            <div class="menu-section">Intel</div>
+            <a href="{{ url_for('diff_view') }}" class="menu-item {% if request.endpoint == 'diff_view' %}active{% endif %}" data-tooltip="Changes / Diff">
+                <i class="bi bi-arrow-left-right"></i><span>Changes / Diff</span>
+            </a>
+            <a href="{{ url_for('notes') }}" class="menu-item {% if request.endpoint == 'notes' %}active{% endif %}" data-tooltip="Notes">
+                <i class="bi bi-journal-text"></i><span>Notes</span>
+            </a>
+
+            <div class="menu-section">Tools</div>
+            <a href="{{ url_for('ad_discovery') }}" class="menu-item {% if request.endpoint == 'ad_discovery' %}active{% endif %}" data-tooltip="AD Discovery">
+                <i class="bi bi-hdd-network"></i><span>AD Discovery</span>
+            </a>
+            <a href="{{ url_for('credentials') }}" class="menu-item {% if request.endpoint == 'credentials' %}active{% endif %}" data-tooltip="Credentials">
+                <i class="bi bi-key"></i><span>Credentials</span>
+            </a>
+            <a href="{{ url_for('settings') }}" class="menu-item {% if request.endpoint == 'settings' %}active{% endif %}" data-tooltip="Settings">
+                <i class="bi bi-gear"></i><span>Settings</span>
+            </a>
+        </div>
+        <div class="sidebar-footer">
+            <div class="status-pill"><span class="status-dot online" id="systemStatusDot"></span><span>System Online</span></div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="content-wrapper" id="mainWrapper">
+        <header class="header">
+            <div class="header-left">
+                <button class="icon-btn" id="sidebarToggle" title="Toggle sidebar" aria-label="Toggle sidebar">
+                    <i class="bi bi-layout-sidebar-inset"></i>
+                </button>
+                <a href="{{ url_for('index') }}" class="header-brand d-none d-lg-flex">
+                    <img src="{{ url_for('static', filename='logo.png') }}" alt="HostVigil">
+                    <span>HostVigil</span>
+                </a>
+                <div class="header-divider d-none d-lg-block"></div>
+                <div class="header-search" id="headerSearchWrap">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="globalSearch" placeholder="Search hosts, IPs..." autocomplete="off" aria-label="Search">
+                    <span class="search-kbd">Ctrl K</span>
+                </div>
+            </div>
+            <div class="header-right">
+                <span class="scan-indicator" id="scanRunningIndicator" style="display:none;">
+                    <span class="pulse"></span> Scanning
+                </span>
+                <div class="dropdown" id="quickScanDropdown">
+                    <button class="btn btn-sm btn-primary" id="quickScanToggle">
+                        <i class="bi bi-lightning-charge-fill"></i> <span class="d-none d-lg-inline">Quick Scan</span>
+                    </button>
+                    <div class="dropdown-menu" id="quickScanMenu">
+                        <a href="javascript:void(0)" onclick="HV.quickScan('discover')"><i class="bi bi-search"></i> Discovery Scan</a>
+                        <a href="javascript:void(0)" onclick="HV.quickScan('scan')"><i class="bi bi-ethernet"></i> TCP Port Scan</a>
+                        <a href="javascript:void(0)" onclick="HV.quickScan('nuclei')"><i class="bi bi-bug"></i> Nuclei Scan</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('scan_controls') }}"><i class="bi bi-sliders"></i> All Scan Controls</a>
+                    </div>
+                </div>
+                <div class="dropdown" id="exportDropdown">
+                    <button class="icon-btn" id="exportToggle" title="Export data">
+                        <i class="bi bi-download"></i>
+                    </button>
+                    <div class="dropdown-menu" id="exportMenu">
+                        <a href="/api/export/report"><i class="bi bi-file-earmark-text"></i> Markdown Report</a>
+                        <a href="/api/export/pdf_report"><i class="bi bi-file-earmark-richtext"></i> HTML Report</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/api/export/json"><i class="bi bi-filetype-json"></i> JSON</a>
+                        <a href="/api/export/csv"><i class="bi bi-filetype-csv"></i> CSV (zip)</a>
+                        <a href="/api/export/zip"><i class="bi bi-file-zip"></i> Full Package</a>
+                        <div class="dropdown-divider"></div>
+                        <a href="/api/export/ips"><i class="bi bi-list-ul"></i> IP List</a>
+                        <a href="/api/export/targets"><i class="bi bi-bullseye"></i> Targets (ip:port)</a>
+                        <a href="/api/export/urls"><i class="bi bi-link-45deg"></i> URLs</a>
+                    </div>
+                </div>
+                <button class="icon-btn" id="themeToggle" title="Toggle theme">
+                    <i class="bi bi-moon-stars" id="themeIcon"></i>
+                </button>
+                <div class="dropdown" id="profileDropdown">
+                    <button class="profile-btn" id="profileToggle" title="Account">
+                        {{ (session.get('username', 'A')[:1] | upper) if session.get('username') else 'A' }}
+                    </button>
+                    <div class="dropdown-menu" id="profileMenu">
+                        <div class="profile-meta">
+                            <span class="profile-name">{{ session.get('username', 'Administrator') }}</span>
+                            <span class="profile-role">HostVigil Operator</span>
+                        </div>
+                        <div class="dropdown-divider"></div>
+                        <a href="{{ url_for('settings') }}"><i class="bi bi-gear"></i> Settings</a>
+                        <button onclick="window.location.href='/logout'"><i class="bi bi-box-arrow-right"></i> Logout</button>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <main class="page-content">
+            {% block page_head %}
+            <header class="page-head">
+                <div class="page-head-main">
+                    <h1 class="page-head-title">{% block page_title %}Dashboard{% endblock %}</h1>
+                    <p class="page-head-subtitle">{% block page_subtitle %}{% endblock %}</p>
+                </div>
+                <div class="page-actions">{% block page_actions %}{% endblock %}</div>
+            </header>
+            {% endblock %}
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="dashboard-footer">
+            <span>HostVigil by <strong>Krishnendu Paul</strong></span>
+            <span>
+                <a href="https://krishnendu.com" target="_blank" rel="noreferrer">krishnendu.com</a>
+                <span style="opacity:0.4;"> &middot; </span>
+                <a href="https://github.com/bidhata/HostVigil" target="_blank" rel="noreferrer">GitHub</a>
+            </span>
+        </footer>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <!-- Sidebar Overlay (mobile) -->
+    <div id="sidebarOverlay" style="position:fixed;inset:0;background:var(--bg-overlay);z-index:999;display:none;"></div>
+
+    <!-- Core Scripts -->
+    <script>
+    var HV = (function() {
+        'use strict';
+
+        // --- Theme ---
+        var themeToggle = document.getElementById('themeToggle');
+        var themeIcon = document.getElementById('themeIcon');
+
+        function setTheme(t) {
+            document.documentElement.setAttribute('data-theme', t);
+            localStorage.setItem('hv-theme', t);
+            themeIcon.className = t === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        }
+
+        themeToggle.addEventListener('click', function() {
+            var cur = document.documentElement.getAttribute('data-theme');
+            setTheme(cur === 'dark' ? 'light' : 'dark');
+        });
+
+        var curTheme = document.documentElement.getAttribute('data-theme') || 'dark';
+        themeIcon.className = curTheme === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+
+        // --- Sidebar ---
+        var sidebarEl = document.getElementById('sidebar');
+        var sidebarOverlay = document.getElementById('sidebarOverlay');
+        var mqDesktop = window.matchMedia('(min-width: 992px)');
+
+        function toggleSidebar() {
+            if (mqDesktop.matches) {
+                var collapsed = sidebarEl.classList.toggle('collapsed');
+                try { localStorage.setItem('hv-sidebar', collapsed ? 'collapsed' : 'expanded'); } catch(e) {}
+            } else {
+                var showing = sidebarEl.classList.toggle('show');
+                sidebarOverlay.style.display = showing ? 'block' : 'none';
+            }
+        }
+
+        document.getElementById('sidebarToggle').addEventListener('click', toggleSidebar);
+
+        sidebarOverlay.addEventListener('click', function() {
+            sidebarEl.classList.remove('show');
+            sidebarOverlay.style.display = 'none';
+        });
+
+        try {
+            if (localStorage.getItem('hv-sidebar') === 'collapsed' && mqDesktop.matches) {
+                sidebarEl.classList.add('collapsed');
+            }
+        } catch(e) {}
+
+        // --- Global Search ---
+        var globalSearch = document.getElementById('globalSearch');
+        if (globalSearch) {
+            globalSearch.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    var q = this.value.trim();
+                    if (q) window.location.href = '/hosts?q=' + encodeURIComponent(q);
+                }
+                if (e.key === 'Escape') { this.blur(); }
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+                    e.preventDefault();
+                    globalSearch.focus();
+                    globalSearch.select();
+                } else if (e.key === '/' && !/^(input|textarea|select)$/i.test((document.activeElement || {}).tagName || '')) {
+                    e.preventDefault();
+                    globalSearch.focus();
+                }
+            });
+        }
+
+        // --- Dropdowns ---
+        function bindDropdown(btnId, menuId) {
+            var ddBtn = document.getElementById(btnId);
+            if (!ddBtn) return;
+            var dd = ddBtn.parentElement;
+            ddBtn.addEventListener('click', function(e) {
+                e.stopPropagation();
+                document.querySelectorAll('.dropdown.open').forEach(function(d) {
+                    if (d !== dd) d.classList.remove('open');
+                });
+                dd.classList.toggle('open');
+            });
+        }
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.dropdown')) {
+                document.querySelectorAll('.dropdown.open').forEach(function(d) { d.classList.remove('open'); });
+            }
+        });
+
+        bindDropdown('exportToggle', 'exportMenu');
+        bindDropdown('quickScanToggle', 'quickScanMenu');
+        bindDropdown('profileToggle', 'profileMenu');
+
+        // --- Quick Scan ---
+        function quickScan(scanType) {
+            var btn = document.getElementById('quickScanToggle');
+            var origHtml = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner"></span> Starting...';
+            document.getElementById('quickScanDropdown').classList.remove('open');
+
+            fetch('/api/scan/trigger', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({scan_type: scanType})
+            })
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                if (data.error) {
+                    showToast(data.error, 'error');
+                } else {
+                    var label = {discover: 'Discovery', scan: 'Port Scan', nuclei: 'Nuclei'}[scanType] || scanType;
+                    showToast(label + ' started successfully', 'success');
+                }
+                setTimeout(function() { btn.disabled = false; btn.innerHTML = origHtml; }, 2500);
+            })
+            .catch(function() {
+                showToast('Failed to trigger scan', 'error');
+                setTimeout(function() { btn.disabled = false; btn.innerHTML = origHtml; }, 2000);
+            });
+        }
+
+        // --- Toast System ---
+        function showToast(message, type) {
+            type = type || 'info';
+            var container = document.getElementById('toastContainer');
+            if (!container) return;
+            var toast = document.createElement('div');
+            toast.className = 'toast-item toast-' + type;
+            var icons = {
+                success: 'bi-check-circle-fill',
+                error: 'bi-x-circle-fill',
+                info: 'bi-info-circle-fill',
+                warning: 'bi-exclamation-triangle-fill'
+            };
+            toast.innerHTML = '<i class="bi ' + (icons[type] || icons.info) + '"></i>' +
+                '<span>' + escapeHtml(message) + '</span>' +
+                '<button class="toast-close" aria-label="Close">&times;</button>';
+
+            toast.querySelector('.toast-close').addEventListener('click', function() {
+                dismissToast(toast);
+            });
+
+            container.appendChild(toast);
+            setTimeout(function() { dismissToast(toast); }, 5000);
+        }
+
+        function dismissToast(el) {
+            if (!el || !el.parentElement) return;
+            el.style.animation = 'toastFadeOut 0.3s ease forwards';
+            setTimeout(function() { if (el.parentElement) el.remove(); }, 300);
+        }
+
+        function escapeHtml(str) {
+            var div = document.createElement('div');
+            div.textContent = str;
+            return div.innerHTML;
+        }
+
+        // --- Auto-Refresh Polling (15s stats) ---
+        function pollLiveData() {
+            fetch('/api/pipeline/live')
+                .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+                .then(function(data) {
+                    var stats = data.stats || {};
+
+                    // Update dashboard stat cards if present
+                    updateStat('stat-hosts', stats.total_hosts || 0);
+                    updateStat('stat-ports', stats.total_ports || 0);
+                    updateStat('stat-vulns', stats.total_vulnerabilities || 0);
+                    updateStat('stat-anomalies', stats.active_anomalies || 0);
+
+                    // Sidebar badges
+                    setBadge('menuTotalHosts', stats.total_hosts || 0);
+                    setBadge('menuVulnBadge', stats.total_vulnerabilities || 0);
+                    setBadge('menuAnomalyBadge', stats.active_anomalies || 0);
+                })
+                .catch(function() {});
+        }
+
+        // --- Scan Status Polling (5s) ---
+        function pollScanStatus() {
+            fetch('/api/scan/status')
+                .then(function(r) { if (!r.ok) throw new Error(); return r.json(); })
+                .then(function(data) {
+                    var scans = data.scans || data;
+                    var anyRunning = false;
+                    if (typeof scans === 'object') {
+                        Object.keys(scans).forEach(function(key) {
+                            var s = scans[key];
+                            var state = typeof s === 'string' ? s : (s.status || '');
+                            if (state === 'running') anyRunning = true;
+                        });
+                    }
+                    var dot = document.getElementById('scanActiveDot');
+                    if (dot) dot.style.display = anyRunning ? 'block' : 'none';
+
+                    var indicator = document.getElementById('scanRunningIndicator');
+                    if (indicator) indicator.style.display = anyRunning ? 'inline-flex' : 'none';
+                })
+                .catch(function() {});
+        }
+
+        function updateStat(id, newVal) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            var cur = parseInt(el.textContent.replace(/,/g, '')) || 0;
+            if (cur !== newVal) animateValue(el, cur, newVal, 800);
+        }
+
+        function setBadge(id, val) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            el.textContent = formatCompactNumber(val);
+            el.style.display = val > 0 ? 'inline-flex' : 'none';
+        }
+
+        function animateValue(el, start, end, duration) {
+            if (start === end) { el.textContent = end.toLocaleString(); return; }
+            var startTime = null;
+            function step(timestamp) {
+                if (!startTime) startTime = timestamp;
+                var progress = Math.min((timestamp - startTime) / duration, 1);
+                var eased = 1 - Math.pow(1 - progress, 3);
+                el.textContent = Math.round(start + (end - start) * eased).toLocaleString();
+                if (progress < 1) requestAnimationFrame(step);
+            }
+            requestAnimationFrame(step);
+        }
+
+        // Pause both pollers when the tab is hidden — stops hammering the
+        // server (and holding SQLite connections) while the user is elsewhere.
+        var _liveTimer = null;
+        var _statusTimer = null;
+        function startPollers() {
+            if (!_liveTimer) _liveTimer = setInterval(pollLiveData, 15000);
+            if (!_statusTimer) _statusTimer = setInterval(pollScanStatus, 5000);
+        }
+        function stopPollers() {
+            if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
+            if (_statusTimer) { clearInterval(_statusTimer); _statusTimer = null; }
+        }
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                stopPollers();
+            } else {
+                pollLiveData();
+                pollScanStatus();
+                startPollers();
+            }
+        });
+        startPollers();
+        setTimeout(pollLiveData, 500);
+        setTimeout(pollScanStatus, 800);
+
+        // --- Auth Interceptor ---
+        // Abort-safe: an aborted fetch (e.g. page navigation with AbortController)
+        // must not trigger a redirect loop or swallow the AbortError.
+        var _origFetch = window.fetch;
+        window.fetch = function() {
+            var args = arguments;
+            return _origFetch.apply(this, args).then(function(r) {
+                if (r && r.status === 401 && !window.location.pathname.startsWith('/login')) {
+                    window.location.href = '/login';
+                }
+                return r;
+            });
+        };
+
+        // --- Helpers ---
+        function formatCompactNumber(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
+            return n.toString();
+        }
+
+        function formatTime(t) {
+            if (!t) return '--';
+            try {
+                return new Date(t).toLocaleString(undefined, {month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'});
+            } catch(e) { return t; }
+        }
+
+        function getSevClass(sev) {
+            switch ((sev || 'info').toLowerCase()) {
+                case 'critical': return 'sev-critical';
+                case 'high': return 'sev-high';
+                case 'medium': return 'sev-medium';
+                case 'low': return 'sev-low';
+                default: return 'sev-info';
+            }
+        }
+
+        function getSevBadge(sev) {
+            switch ((sev || 'info').toLowerCase()) {
+                case 'critical': return 'danger';
+                case 'high': return 'warning';
+                case 'medium': return 'warning';
+                case 'low': return 'success';
+                default: return 'info';
+            }
+        }
+
+        // --- Chart Theme Helpers ---
+        function getChartTheme() {
+            var isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+            return { mode: isDark ? 'dark' : 'light', palette: 'palette1', monochrome: { enabled: false } };
+        }
+
+        function getChartColors() {
+            return ['#7367f0', '#28c76f', '#ea5455', '#ff9f43', '#00cfe8', '#a8aaae'];
+        }
+
+        function getChartGridColor() {
+            var style = getComputedStyle(document.documentElement);
+            return style.getPropertyValue('--border-color').trim() || '#1f2737';
+        }
+
+        function getChartBgColor() {
+            var style = getComputedStyle(document.documentElement);
+            return style.getPropertyValue('--bg-card').trim() || '#151a23';
+        }
+
+        // --- Public API ---
+        return {
+            showToast: showToast,
+            dismissToast: dismissToast,
+            quickScan: quickScan,
+            escapeHtml: escapeHtml,
+            formatCompactNumber: formatCompactNumber,
+            formatTime: formatTime,
+            getSevClass: getSevClass,
+            getSevBadge: getSevBadge,
+            getChartTheme: getChartTheme,
+            getChartColors: getChartColors,
+            getChartGridColor: getChartGridColor,
+            getChartBgColor: getChartBgColor,
+            animateValue: animateValue
+        };
+    })();
+
+    // Expose helpers globally for child templates
+    window.showToast = HV.showToast;
+    window.quickScan = HV.quickScan;
+    window.formatCompactNumber = HV.formatCompactNumber;
+    window.formatTime = HV.formatTime;
+    window.getSevClass = HV.getSevClass;
+    window.getSevBadge = HV.getSevBadge;
+    window.getChartTheme = HV.getChartTheme;
+    window.getChartColors = HV.getChartColors;
+    window.getChartGridColor = HV.getChartGridColor;
+    window.getChartBgColor = HV.getChartBgColor;
+    window.escapeHtml = HV.escapeHtml;
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

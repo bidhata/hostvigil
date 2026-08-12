@@ -1,0 +1,58 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# Data (runtime, not source)
+data/hostvigil.db
+data/hostvigil.db-shm
+data/hostvigil.db-wal
+data/.hostvigil.pid
+data/.secret_key
+data/logs/*
+data/models/*.pkl
+data/scans/*
+data/reports/*
+data/pcap/
+!data/logs/.gitkeep
+!data/models/.gitkeep
+!data/scans/.gitkeep
+!data/reports/.gitkeep
+
+# PCAP captures
+*.pcap
+
+# Config backups (created on settings save)
+config.yaml.backup
+
+# Kiro CLI (local tooling)
+.kiro/
+
+# OS metadata
+.DS_Store
+Thumbs.db
+*~
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Misc
+*.tmp
+*.bak
+out.csv

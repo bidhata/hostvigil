@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Notes — HostVigil{% endblock %}
+{% block page_title %}Engagement Notes{% endblock %}
+{% block page_subtitle %}Capture findings, evidence, and next steps as markdown notes tied to your engagement timeline.{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-primary" onclick="document.getElementById('noteTitle').focus();" title="Add a new note">
+    <i class="bi bi-plus-lg me-1"></i> New Note
+</button>
+<button class="btn btn-sm btn-ghost" onclick="loadNotes()" title="Refresh">
+    <i class="bi bi-arrow-clockwise"></i>
+</button>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-4 col-lg-12">
+        <div class="card animate-fade-in-scale">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-plus-circle-fill text-success"></i> New Note</div>
+                    <div class="card-subtitle">Markdown supported — keep it actionable</div>
+                </div>
+            </div>
+            <div class="card-body">
+                <form onsubmit="addNote(event)">
+                    <div class="form-group"><label class="form-label">Title</label><input type="text" class="form-control" id="noteTitle" placeholder="Finding title..." required autofocus></div>
+                    <div class="form-group"><label class="form-label">Content</label><textarea class="form-control" id="noteContent" rows="7" placeholder="Details, evidence, next steps... Markdown supported." required style="resize:vertical;"></textarea></div>
+                    <button type="submit" class="btn btn-primary w-100 btn-lg"><i class="bi bi-plus-lg"></i> Add Note</button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-8 col-lg-12">
+        <div class="card animate-fade-in-up" style="animation-delay:0.1s;">
+            <div class="card-header">
+                <div>
+                    <div class="card-title"><i class="bi bi-journal-text text-warning"></i> Notes</div>
+                    <div class="card-subtitle">Your operational timeline</div>
+                </div>
+                <span class="chip" id="noteCount">—</span>
+            </div>
+            <div class="card-body p-0" id="notesList" style="max-height:calc(100vh - 250px);overflow-y:auto;">
+                {% for i in range(4) %}
+                <div style="padding:1rem;border-bottom:1px solid var(--border-light);"><span class="skeleton skeleton-row" style="width:40%;display:inline-block;height:18px;"></span><br><span class="skeleton-text" style="display:block;"></span><span class="skeleton-text short" style="display:block;"></span></div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function(){
+    function loadNotes(){
+        fetch('/api/notes').then(function(r){return r.json();}).then(function(data){
+            var notes=data.notes||[];
+            document.getElementById('noteCount').textContent=notes.length+' note'+(notes.length!==1?'s':'');
+            var el=document.getElementById('notesList');
+            if(!notes.length){el.innerHTML='<div class="empty-state"><i class="bi bi-journal-text"></i><h4>No notes yet</h4><p>Add findings and operational notes during your engagement.</p></div>';return;}
+            var html='';
+            notes.forEach(function(n,i){
+                var time=formatTime(n.created_at);
+                html+='<div style="padding:1.1rem;border-bottom:1px solid var(--border-light);animation:fadeInUp 0.3s ease;animation-delay:'+(i*0.04)+'s;animation-fill-mode:both;">';
+                html+='<div class="d-flex align-center justify-between mb-2">';
+                html+='<h6 class="mb-0 font-bold">'+escapeHtml(n.title)+'</h6>';
+                html+='<div class="d-flex gap-1">';
+                html+='<span class="text-xs text-muted me-2">'+time+'</span>';
+                html+='<button class="btn btn-icon btn-sm text-danger" onclick="deleteNote('+n.id+')" title="Delete"><i class="bi bi-trash"></i></button>';
+                html+='</div></div>';
+                html+='<p class="text-sm mb-0" style="white-space:pre-wrap;color:var(--text-body);">'+escapeHtml(n.content)+'</p>';
+                html+='</div>';
+            });
+            el.innerHTML=html;
+        }).catch(function(){});
+    }
+
+    window.loadNotes = loadNotes;
+
+    window.addNote=function(e){
+        e.preventDefault();
+        var title=document.getElementById('noteTitle').value.trim();
+        var content=document.getElementById('noteContent').value.trim();
+        if(!title||!content)return;
+        var btn = e.target.querySelector('button[type=submit]');
+        if(btn){btn.disabled=true;btn.innerHTML='<span class="spinner"></span> Saving...';}
+        fetch('/api/notes',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title:title,content:content})})
+        .then(function(r){return r.json();}).then(function(){
+            showToast('Note saved','success');document.getElementById('noteTitle').value='';document.getElementById('noteContent').value='';loadNotes();
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-plus-lg"></i> Add Note';}
+        }).catch(function(){showToast('Failed to save','error');if(btn){btn.disabled=false;btn.innerHTML='<i class="bi bi-plus-lg"></i> Add Note';}});
+    };
+
+    window.deleteNote=function(id){
+        if(!confirm('Delete this note? This cannot be undone.'))return;
+        fetch('/api/notes/'+id,{method:'DELETE'}).then(function(){showToast('Note deleted','info');loadNotes();}).catch(function(){showToast('Failed to delete','error');});
+    };
+
+    function escapeHtml(str){var d=document.createElement('div');d.textContent=str;return d.innerHTML;}
+
+    // Keyboard shortcut
+    document.addEventListener('keydown',function(e){if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();document.getElementById('noteTitle').focus();}});
+
+    loadNotes();
+})();
+</script>
+{% endblock %}

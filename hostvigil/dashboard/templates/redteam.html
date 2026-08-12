@@ -1,0 +1,206 @@
+{% extends "base.html" %}
+{% block title %}Red Team — HostVigil{% endblock %}
+{% block page_title %}Red Team{% endblock %}
+{% block page_subtitle %}Exploit-ready targets, crown jewels and pivot footholds ranked for offensive prioritization{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-ghost" id="rtRefresh" onclick="loadAttackPaths()">
+    <i class="bi bi-arrow-clockwise"></i> Refresh
+</button>
+{% endblock %}
+
+{% block head_extra %}
+<style>
+.list-row { cursor: default; }
+.list-row:hover { transform: none; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up">
+            <div class="stat-icon danger"><i class="bi bi-crosshair2"></i></div>
+            <div class="stat-content"><h3 id="rt-exploitable">0</h3><p>Exploit Ready</p></div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.05s;">
+            <div class="stat-icon warning"><i class="bi bi-key-fill"></i></div>
+            <div class="stat-content"><h3 id="rt-credentials">0</h3><p>Credential Findings</p></div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.1s;">
+            <div class="stat-icon primary"><i class="bi bi-diagram-3"></i></div>
+            <div class="stat-content"><h3 id="rt-pivots">0</h3><p>Pivot Paths</p></div>
+        </div>
+    </div>
+    <div class="col-3">
+        <div class="stat-card animate-fade-in-up" style="animation-delay:0.15s;">
+            <div class="stat-icon info"><i class="bi bi-trophy-fill"></i></div>
+            <div class="stat-content"><h3 id="rt-crown">0</h3><p>Crown Jewels</p></div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-7">
+        <div class="card animate-fade-in-up" style="animation-delay:0.2s;">
+            <div class="card-header">
+                <div>
+                    <h5 class="card-title"><i class="bi bi-crosshair2 text-danger me-2"></i> Exploit-Ready Targets</h5>
+                    <span class="card-subtitle">High and critical severity findings with known exploitation potential</span>
+                </div>
+                <span class="badge badge-danger badge-pill" id="exploitBadge">0</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-wrapper" style="max-height:420px;overflow-y:auto;">
+                    <table class="table table-sm">
+                        <thead><tr><th>Host</th><th>Vulnerability</th><th>Severity</th><th>Port</th><th>Type</th></tr></thead>
+                        <tbody id="exploitTable">
+                            {% for i in range(6) %}
+                            <tr><td><span class="skeleton skeleton-row" style="width:100px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:180px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:60px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:40px;display:inline-block;"></span></td><td><span class="skeleton skeleton-row" style="width:80px;display:inline-block;"></span></td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-5">
+        <div class="card animate-fade-in-up" style="animation-delay:0.25s;">
+            <div class="card-header">
+                <div>
+                    <h5 class="card-title"><i class="bi bi-trophy-fill text-warning me-2"></i> Crown Jewel Targets</h5>
+                    <span class="card-subtitle">High-value assets to prioritize for defense</span>
+                </div>
+            </div>
+            <div class="card-body p-3" id="crownJewels">
+                <div class="text-center text-muted py-4"><span class="spinner" style="border-width:3px;width:24px;height:24px;"></span></div>
+            </div>
+        </div>
+        <div class="card mt-3 animate-fade-in-up" style="animation-delay:0.3s;">
+            <div class="card-header">
+                <div>
+                    <h5 class="card-title"><i class="bi bi-arrow-repeat text-primary me-2"></i> Pivot Footholds</h5>
+                    <span class="card-subtitle">Identified lateral movement opportunities</span>
+                </div>
+            </div>
+            <div class="card-body p-3" id="pivotPaths">
+                <div class="text-center text-muted py-4"><span class="spinner" style="border-width:3px;width:24px;height:24px;"></span></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function() {
+    var fetchInFlight = false;
+
+    window.loadAttackPaths = function() {
+        if (fetchInFlight) return;
+        fetchInFlight = true;
+        var btn = document.getElementById('rtRefresh');
+        if (btn) btn.disabled = true;
+
+        fetch('/api/attack-paths')
+            .then(function(r) { return r.json(); })
+            .then(function(data) {
+                var initial = data.initial_access || [];
+                var lateral = data.lateral_movement || [];
+                var chains = data.attack_chains || [];
+                var crownJewels = data.crown_jewels || [];
+                var pivots = data.pivot_footholds || [];
+                var credentials = data.credential_findings || [];
+
+                animateNum('rt-exploitable', initial.length);
+                animateNum('rt-credentials', credentials.length);
+                animateNum('rt-pivots', pivots.length || lateral.length);
+                animateNum('rt-crown', crownJewels.length);
+                document.getElementById('exploitBadge').textContent = initial.length;
+
+                renderExploitTable(initial);
+                renderCrownJewels(crownJewels);
+                renderPivots(pivots.length ? pivots : lateral);
+            })
+            .catch(function() {
+                document.getElementById('exploitTable').innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-exclamation-triangle text-danger"></i><h4>Failed to load data</h4><p class="text-sm">Unable to fetch attack path data from the API.</p></div></td></tr>';
+            })
+            .finally(function() {
+                fetchInFlight = false;
+                if (btn) btn.disabled = false;
+            });
+    };
+
+    function animateNum(id, val) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        var c = parseInt(el.textContent) || 0;
+        if (c === val) return;
+        var s = null;
+        function step(t) { if (!s) s = t; var p = Math.min((t - s) / 600, 1); el.textContent = Math.round(c + (val - c) * (1 - Math.pow(1 - p, 3))).toLocaleString(); if (p < 1) requestAnimationFrame(step); }
+        requestAnimationFrame(step);
+    }
+
+    function renderExploitTable(targets) {
+        var tbody = document.getElementById('exploitTable');
+        if (!targets.length) {
+            tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state"><i class="bi bi-shield-check"></i><h4>No exploit-ready targets</h4><p class="text-sm">Run Nuclei to discover exploitable services.</p></div></td></tr>';
+            return;
+        }
+        var html = '';
+        targets.slice(0, 50).forEach(function(t, i) {
+            html += '<tr style="animation:fadeInUp 0.25s ease;animation-delay:' + (i * 0.02) + 's;animation-fill-mode:both;">';
+            html += '<td class="font-mono text-sm"><a href="/host/' + encodeURIComponent(t.host||t.ip||'') + '" class="font-bold">' + escapeHtml(t.host||t.ip||'—') + '</a></td>';
+            html += '<td class="text-sm truncate" style="max-width:220px;" title="' + escapeAttr(t.technique||t.name||'') + '">' + escapeHtml(t.technique||t.name||t.vulnerability||'—') + '</td>';
+            html += '<td><span class="badge badge-' + window.getSevBadge(t.severity) + ' badge-pill">' + escapeHtml(t.severity||'high') + '</span></td>';
+            html += '<td class="font-mono text-sm">' + escapeHtml(t.port||'—') + '</td>';
+            html += '<td class="text-xs text-muted">' + escapeHtml(t.type||t.service||'—') + '</td>';
+            html += '</tr>';
+        });
+        tbody.innerHTML = html;
+    }
+
+    function renderCrownJewels(jewels) {
+        var el = document.getElementById('crownJewels');
+        if (!jewels.length) {
+            el.innerHTML = '<div class="empty-state"><i class="bi bi-trophy-fill"></i><h4>No crown jewels yet</h4><p class="text-sm">Run more scans to identify high-value targets.</p></div>';
+            return;
+        }
+        var html = '<div class="list-group">';
+        jewels.slice(0, 10).forEach(function(j) {
+            html += '<div class="list-row">';
+            html += '<div class="stat-icon info" style="width:36px;height:36px;font-size:0.9rem;"><i class="bi bi-trophy-fill"></i></div>';
+            html += '<div class="flex-1" style="min-width:0;"><div class="text-sm font-bold">' + escapeHtml(j.host||j.ip||'—') + '</div><div class="text-xs text-muted truncate">' + escapeHtml(j.reason||j.description||'') + '</div></div>';
+            html += '<span class="badge badge-info badge-pill">' + escapeHtml(j.score||j.risk||'—') + '</span>';
+            html += '</div>';
+        });
+        el.innerHTML = html + '</div>';
+    }
+
+    function renderPivots(pivots) {
+        var el = document.getElementById('pivotPaths');
+        if (!pivots.length) {
+            el.innerHTML = '<div class="empty-state"><i class="bi bi-diagram-3"></i><h4>No pivot paths found</h4><p class="text-sm">No lateral movement opportunities identified yet.</p></div>';
+            return;
+        }
+        var html = '<div class="list-group">';
+        pivots.slice(0, 8).forEach(function(p) {
+            html += '<div class="list-row">';
+            html += '<i class="bi bi-arrow-right-circle-fill text-primary" style="font-size:1.05rem;"></i>';
+            html += '<div class="flex-1 text-sm" style="min-width:0;">' + escapeHtml(p.description||p.host||p.technique||'—') + '</div>';
+            html += '</div>';
+        });
+        el.innerHTML = html + '</div>';
+    }
+
+    function escapeHtml(s) { var d = document.createElement('div'); d.textContent = (s == null ? '' : String(s)); return d.innerHTML; }
+    function escapeAttr(s) { return (s||'').replace(/"/g,'&quot;'); }
+
+    window.loadAttackPaths();
+})();
+</script>
+{% endblock %}

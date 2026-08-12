@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login — HostVigil</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='logo.png') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/fonts/inter/inter.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='vendor/bootstrap-icons/bootstrap-icons.min.css') }}">
+    <script>
+        (function(){ var t = localStorage.getItem('hv-theme') || 'dark'; document.documentElement.setAttribute('data-theme', t); })();
+    </script>
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root, [data-theme="dark"] {
+            --login-bg: #080b11;
+            --login-card-bg: #0f1319;
+            --login-card-border: rgba(255, 255, 255, 0.06);
+            --login-input-bg: #161c26;
+            --login-input-border: rgba(255, 255, 255, 0.08);
+            --login-input-focus: #7367f0;
+            --login-text: #e4e6f0;
+            --login-text-muted: #5f6780;
+            --login-text-secondary: #8b92a5;
+            --login-primary: #7367f0;
+            --login-primary-hover: #8577ff;
+            --login-primary-glow: rgba(115, 103, 240, 0.25);
+            --login-danger: #ea5455;
+            --login-danger-bg: rgba(234, 84, 85, 0.08);
+        }
+
+        [data-theme="light"] {
+            --login-bg: #f0f2f8;
+            --login-card-bg: #ffffff;
+            --login-card-border: rgba(0, 0, 0, 0.06);
+            --login-input-bg: #f4f5fa;
+            --login-input-border: rgba(0, 0, 0, 0.1);
+            --login-input-focus: #7367f0;
+            --login-text: #2f3349;
+            --login-text-muted: #8b92a5;
+            --login-text-secondary: #6b7280;
+            --login-primary: #7367f0;
+            --login-primary-hover: #5e50ee;
+            --login-primary-glow: rgba(115, 103, 240, 0.2);
+            --login-danger: #ea5455;
+            --login-danger-bg: rgba(234, 84, 85, 0.06);
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--login-bg);
+            color: var(--login-text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Background grid pattern */
+        .bg-grid {
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(115, 103, 240, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(115, 103, 240, 0.03) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* Animated gradient orbs */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+            pointer-events: none;
+            animation: orbit 20s ease-in-out infinite;
+        }
+        .bg-orb-1 {
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(115, 103, 240, 0.15), transparent 70%);
+            top: -15%; left: -10%;
+            animation-duration: 18s;
+        }
+        .bg-orb-2 {
+            width: 400px; height: 400px;
+            background: radial-gradient(circle, rgba(0, 207, 232, 0.1), transparent 70%);
+            bottom: -10%; right: -8%;
+            animation-duration: 22s;
+            animation-direction: reverse;
+        }
+        .bg-orb-3 {
+            width: 300px; height: 300px;
+            background: radial-gradient(circle, rgba(40, 199, 111, 0.06), transparent 70%);
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            animation-duration: 25s;
+        }
+
+        @keyframes orbit {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            25% { transform: translate(30px, -20px) scale(1.05); }
+            50% { transform: translate(-10px, 30px) scale(0.95); }
+            75% { transform: translate(-30px, -10px) scale(1.02); }
+        }
+
+        /* Login container */
+        .login-container {
+            position: relative;
+            z-index: 1;
+            width: 100%;
+            max-width: 400px;
+            padding: 1.5rem;
+            animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Card */
+        .login-card {
+            background: var(--login-card-bg);
+            border: 1px solid var(--login-card-border);
+            border-radius: 20px;
+            padding: 3rem 2.5rem 2.5rem;
+            box-shadow:
+                0 0 0 1px rgba(255, 255, 255, 0.02),
+                0 20px 60px -10px rgba(0, 0, 0, 0.4),
+                0 0 40px rgba(115, 103, 240, 0.04);
+            backdrop-filter: blur(20px);
+        }
+
+        [data-theme="light"] .login-card {
+            box-shadow:
+                0 20px 60px -10px rgba(0, 0, 0, 0.1),
+                0 0 0 1px rgba(0, 0, 0, 0.03);
+        }
+
+        /* Brand section */
+        .login-brand {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+
+        .login-logo {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            box-shadow: 0 8px 24px rgba(115, 103, 240, 0.3);
+            margin-bottom: 1.25rem;
+            transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            object-fit: contain;
+        }
+        .login-logo:hover { transform: scale(1.1) rotate(-3deg); }
+
+        .login-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            margin-bottom: 0.35rem;
+            background: linear-gradient(135deg, var(--login-primary), #a78bfa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .login-subtitle {
+            font-size: 0.82rem;
+            color: var(--login-text-muted);
+            letter-spacing: 0.01em;
+        }
+
+        /* Error message */
+        .login-alert {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+            padding: 0.75rem 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: var(--login-danger);
+            background: var(--login-danger-bg);
+            border: 1px solid rgba(234, 84, 85, 0.12);
+            border-radius: 10px;
+            animation: shake 0.4s ease;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-4px); }
+            75% { transform: translateX(4px); }
+        }
+
+        /* Form fields */
+        .field {
+            margin-bottom: 1.25rem;
+        }
+
+        .field-label {
+            display: block;
+            font-size: 0.78rem;
+            font-weight: 500;
+            color: var(--login-text-secondary);
+            margin-bottom: 0.5rem;
+            letter-spacing: 0.01em;
+        }
+
+        .field-input-wrap {
+            position: relative;
+        }
+
+        .field-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--login-text-muted);
+            font-size: 0.88rem;
+            transition: color 0.2s;
+            pointer-events: none;
+        }
+
+        .field-input {
+            width: 100%;
+            padding: 0.75rem 0.875rem 0.75rem 2.6rem;
+            font-size: 0.88rem;
+            font-family: inherit;
+            color: var(--login-text);
+            background: var(--login-input-bg);
+            border: 1.5px solid var(--login-input-border);
+            border-radius: 10px;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        }
+
+        .field-input::placeholder {
+            color: var(--login-text-muted);
+        }
+
+        .field-input:focus {
+            border-color: var(--login-input-focus);
+            box-shadow: 0 0 0 3px var(--login-primary-glow);
+            background: var(--login-card-bg);
+        }
+
+        .field-input:focus + .field-icon,
+        .field-input:focus ~ .field-icon {
+            color: var(--login-primary);
+        }
+
+        /* Password toggle */
+        .field-toggle {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--login-text-muted);
+            cursor: pointer;
+            padding: 4px;
+            font-size: 0.92rem;
+            border-radius: 6px;
+            transition: color 0.2s;
+        }
+        .field-toggle:hover { color: var(--login-text-secondary); }
+
+        /* Submit button */
+        .login-btn {
+            width: 100%;
+            padding: 0.8rem;
+            margin-top: 0.75rem;
+            font-size: 0.9rem;
+            font-weight: 600;
+            font-family: inherit;
+            color: #fff;
+            background: var(--login-primary);
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            letter-spacing: 0.01em;
+        }
+
+        .login-btn:hover {
+            background: var(--login-primary-hover);
+            box-shadow: 0 8px 24px var(--login-primary-glow);
+        }
+
+        .login-btn:active {
+            transform: scale(0.98);
+        }
+
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        /* Footer */
+        .login-footer {
+            text-align: center;
+            margin-top: 1.75rem;
+            padding-top: 1.25rem;
+            border-top: 1px solid var(--login-card-border);
+        }
+
+        .login-footer-text {
+            font-size: 0.72rem;
+            color: var(--login-text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+        }
+
+        .login-credit {
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.7rem;
+            color: var(--login-text-muted);
+            opacity: 0.5;
+        }
+
+        /* Theme toggle */
+        .theme-toggle {
+            position: fixed;
+            top: 1.25rem;
+            right: 1.25rem;
+            z-index: 10;
+            background: var(--login-card-bg);
+            border: 1px solid var(--login-card-border);
+            border-radius: 10px;
+            width: 38px;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            color: var(--login-text-muted);
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+        .theme-toggle:hover {
+            color: var(--login-primary);
+            border-color: var(--login-primary);
+            box-shadow: 0 0 12px var(--login-primary-glow);
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .login-card { padding: 2.5rem 1.75rem 2rem; border-radius: 16px; }
+            .login-brand { margin-bottom: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background effects -->
+    <div class="bg-grid"></div>
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+    <div class="bg-orb bg-orb-3"></div>
+
+    <!-- Theme toggle -->
+    <button class="theme-toggle" onclick="toggleTheme()" title="Toggle theme" aria-label="Toggle light/dark theme">
+        <i class="bi bi-moon-fill" id="themeIcon"></i>
+    </button>
+
+    <!-- Login form -->
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <img src="{{ url_for('static', filename='logo.png') }}" alt="HostVigil" class="login-logo">
+                <h1 class="login-title">HostVigil</h1>
+                <p class="login-subtitle">Stealth Reconnaissance Platform</p>
+            </div>
+
+            {% if error %}
+            <div class="login-alert" role="alert">
+                <i class="bi bi-shield-exclamation"></i>
+                <span>{{ error }}</span>
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('login') }}" id="loginForm">
+                <div class="field">
+                    <label class="field-label" for="username">Username</label>
+                    <div class="field-input-wrap">
+                        <input
+                            type="text"
+                            id="username"
+                            name="username"
+                            class="field-input"
+                            placeholder="Enter username"
+                            autocomplete="username"
+                            autofocus
+                            required
+                        >
+                        <i class="bi bi-person field-icon"></i>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label class="field-label" for="password">Password</label>
+                    <div class="field-input-wrap">
+                        <input
+                            type="password"
+                            id="password"
+                            name="password"
+                            class="field-input"
+                            placeholder="Enter password"
+                            autocomplete="current-password"
+                            required
+                        >
+                        <i class="bi bi-lock field-icon"></i>
+                        <button type="button" class="field-toggle" onclick="togglePassword()" aria-label="Toggle password visibility">
+                            <i class="bi bi-eye" id="passToggleIcon"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <button type="submit" class="login-btn" id="submitBtn">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    Sign In
+                </button>
+            </form>
+
+            <div class="login-footer">
+                <p class="login-footer-text">
+                    <i class="bi bi-shield-lock-fill"></i>
+                    Encrypted session · 30-min idle timeout
+                </p>
+            </div>
+        </div>
+
+        <p class="login-credit">HostVigil by Krishnendu Paul</p>
+    </div>
+
+    <script>
+        // Theme toggle
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'dark' ? 'light' : 'dark';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('hv-theme', next);
+            updateThemeIcon(next);
+        }
+
+        function updateThemeIcon(theme) {
+            const icon = document.getElementById('themeIcon');
+            icon.className = theme === 'dark' ? 'bi bi-moon-fill' : 'bi bi-sun-fill';
+        }
+
+        // Initialize theme icon
+        updateThemeIcon(document.documentElement.getAttribute('data-theme') || 'dark');
+
+        // Password visibility toggle
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('passToggleIcon');
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.className = 'bi bi-eye-slash';
+            } else {
+                input.type = 'password';
+                icon.className = 'bi bi-eye';
+            }
+        }
+
+        // Submit button loading state
+        document.getElementById('loginForm').addEventListener('submit', function() {
+            const btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="bi bi-arrow-repeat" style="animation:spin 0.8s linear infinite"></i> Signing in...';
+        });
+    </script>
+
+    <style>
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    </style>
+</body>
+</html>

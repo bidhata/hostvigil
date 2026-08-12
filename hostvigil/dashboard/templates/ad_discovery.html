@@ -1,0 +1,356 @@
+{% extends "base.html" %}
+
+{% block title %}AD Discovery — HostVigil{% endblock %}
+{% block page_title %}Active Directory Discovery{% endblock %}
+{% block page_subtitle %}Query AD via LDAP to discover all domain-joined hosts without sending a single scan packet.{% endblock %}
+
+{% block page_actions %}
+<button class="btn btn-sm btn-primary" onclick="connectAD()">
+    <i class="bi bi-plug me-1"></i> Connect
+</button>
+<button class="btn btn-sm btn-outline-secondary" onclick="exportToCSV()" title="Export discovered computers to CSV">
+    <i class="bi bi-download me-1"></i> Export CSV
+</button>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.computer-row {
+    background: var(--bg-input);
+    border-left: 3px solid var(--info);
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 5px;
+    transition: all 0.3s;
+}
+
+.computer-row:hover {
+    background: var(--bg-card-hover);
+    transform: translateX(5px);
+}
+
+.computer-row.server {
+    border-left-color: var(--danger);
+}
+
+.computer-row.dc {
+    border-left-color: var(--warning);
+    background: var(--warning-light);
+}
+
+.tag {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    margin-right: 5px;
+}
+
+.tag.server { background: var(--danger-light); color: var(--danger); }
+.tag.dc { background: var(--warning-light); color: var(--warning); }
+.tag.workstation { background: var(--info-light); color: var(--info); }
+
+.tree-view {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius);
+    padding: 20px;
+    max-height: 500px;
+    overflow-y: auto;
+}
+
+.tree-node {
+    padding: 8px 15px;
+    border-left: 2px solid var(--info);
+    margin-left: 20px;
+    cursor: pointer;
+}
+
+.tree-node:hover {
+    background: var(--bg-card-hover);
+}
+
+.tree-node.expanded > .tree-children {
+    display: block;
+}
+
+.tree-children {
+    display: none;
+    margin-left: 20px;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div>
+    <!-- Connection Panel -->
+    <div class="card mb-4 animate-fade-in-up">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-8 col-md-12">
+                    <div class="card-title mb-3"><i class="bi bi-hdd-network me-2 text-primary"></i>Active Directory Query</div>
+                    <p class="text-muted" style="font-size:0.85rem;">
+                        Query AD via LDAP to discover all domain-joined hosts without sending scan packets.
+                        Zero detection risk — looks like normal domain traffic.
+                    </p>
+                    <div class="row">
+                        <div class="col-4 col-md-12">
+                            <label class="form-label">Domain Controller</label>
+                            <input type="text" class="form-control" id="dcInput" placeholder="dc01.corp.local">
+                        </div>
+                        <div class="col-3 col-md-12">
+                            <label class="form-label">Domain (optional)</label>
+                            <input type="text" class="form-control" id="domainInput" placeholder="corp.local">
+                        </div>
+                        <div class="col-3 col-md-12">
+                            <label class="form-label">Username (optional)</label>
+                            <input type="text" class="form-control" id="userInput" placeholder="user@corp.local">
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <label class="form-label">Password (optional, for authenticated bind)</label>
+                            <input type="password" class="form-control" id="passInput" placeholder="Enter password if required">
+                        </div>
+                    </div>
+                </div>
+                <div class="col-4 col-md-12">
+                    <div class="stat-card mb-2 animate-fade-in-up">
+                        <div class="stat-icon primary"><i class="bi bi-pc-display"></i></div>
+                        <div class="stat-content"><h3 id="computerCount">0</h3><p>Computers Found</p></div>
+                    </div>
+                    <div class="stat-card mb-2 animate-fade-in-up" style="animation-delay:0.05s;">
+                        <div class="stat-icon warning"><i class="bi bi-server"></i></div>
+                        <div class="stat-content"><h3 id="serverCount">0</h3><p>Servers</p></div>
+                    </div>
+                    <div class="stat-card animate-fade-in-up" style="animation-delay:0.1s;">
+                        <div class="stat-icon danger"><i class="bi bi-shield-lock"></i></div>
+                        <div class="stat-content"><h3 id="dcCount">0</h3><p>Domain Controllers</p></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Results -->
+    <div class="row" id="resultsSection" style="display:none;">
+        <div class="col-12">
+            <div class="card animate-fade-in-up">
+                <div class="card-header">
+                    <div class="card-title"><i class="bi bi-pc-display me-2 text-primary"></i>Discovered Computers</div>
+                    <button class="btn btn-sm btn-outline-success" onclick="addToTargets()">
+                        <i class="bi bi-plus-circle me-1"></i> Add to Targets
+                    </button>
+                </div>
+                <div class="card-body p-0">
+                    <div class="table-wrapper">
+                        <table class="table table-hover" id="computersTable">
+                            <thead>
+                                <tr>
+                                    <th>Hostname</th>
+                                    <th>IP</th>
+                                    <th>OS</th>
+                                    <th>Type</th>
+                                    <th>Last Logon</th>
+                                    <th>OU</th>
+                                </tr>
+                            </thead>
+                            <tbody id="computersBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- OU Structure -->
+    <div class="row mt-4" id="ouSection" style="display:none;">
+        <div class="col-6 col-md-12">
+            <div class="card animate-fade-in-up">
+                <div class="card-header">
+                    <div class="card-title"><i class="bi bi-diagram-3 me-2 text-info"></i>OU Structure</div>
+                </div>
+                <div class="card-body">
+                    <div class="tree-view" id="ouTree"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-12">
+            <div class="card animate-fade-in-up">
+                <div class="card-header">
+                    <div class="card-title"><i class="bi bi-shield-lock me-2 text-warning"></i>High-Value Accounts</div>
+                </div>
+                <div class="card-body">
+                    <div id="highValueAccounts"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let discoveredComputers = [];
+
+// HTML-escape server-supplied values before injecting into innerHTML
+function esc(v) {
+    return String(v == null ? '' : v)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function connectAD() {
+    const dc = document.getElementById('dcInput').value;
+    const domain = document.getElementById('domainInput').value;
+    const username = document.getElementById('userInput').value;
+    const password = document.getElementById('passInput').value;
+    
+    if (!dc) {
+        showToast('Domain Controller is required', 'error');
+        return;
+    }
+    
+    // Show loading
+    document.getElementById('computersBody').innerHTML = `
+        <tr>
+            <td colspan="6" class="text-center">
+                <div class="spinner" style="width:24px;height:24px;border-width:3px;margin:0 auto;"></div>
+                <p class="mt-2">Connecting to AD...</p>
+            </td>
+        </tr>
+    `;
+    
+    fetch('/api/ad/discover', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+            dc, domain, username, password
+        })
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) {
+            showToast('Error: ' + data.error, 'error');
+            return;
+        }
+        
+        discoveredComputers = data.computers || [];
+        displayComputers(discoveredComputers);
+        
+        document.getElementById('computerCount').textContent = discoveredComputers.length;
+        document.getElementById('serverCount').textContent = 
+            discoveredComputers.filter(c => c.type === 'server').length;
+        document.getElementById('dcCount').textContent = 
+            discoveredComputers.filter(c => c.type === 'dc').length;
+        
+        document.getElementById('resultsSection').style.display = 'flex';
+        document.getElementById('ouSection').style.display = 'flex';
+        
+        if (data.ous) displayOUStructure(data.ous);
+        if (data.high_value) displayHighValueAccounts(data.high_value);
+    })
+    .catch(err => {
+        showToast('Connection failed: ' + err, 'error');
+    });
+}
+
+function displayComputers(computers) {
+    const tbody = document.getElementById('computersBody');
+    tbody.innerHTML = computers.map(c => `
+        <tr class="computer-row ${esc(c.type) || 'workstation'}">
+            <td>
+                <strong>${esc(c.hostname || c.name) || 'N/A'}</strong>
+                <br>
+                <small class="text-muted">${esc(c.name) || ''}</small>
+            </td>
+            <td>${esc((c.ips || []).join(', ')) || 'Not resolved'}</td>
+            <td>${esc(c.os) || 'Unknown'}</td>
+            <td>
+                <span class="tag ${esc(c.type) || 'workstation'}">
+                    ${esc(c.type) || 'workstation'}
+                </span>
+            </td>
+            <td>${esc(formatTimestamp(c.last_logon))}</td>
+            <td>${esc(formatOU(c.dn))}</td>
+        </tr>
+    `).join('');
+}
+
+function displayOUStructure(ous) {
+    const container = document.getElementById('ouTree');
+    // Simple tree display
+    container.innerHTML = Object.entries(ous).map(([dn, ou]) => `
+        <div class="tree-node">
+            <i class="bi bi-folder"></i> ${esc(ou.name)}
+            <br><small class="text-muted">${esc(dn)}</small>
+        </div>
+    `).join('');
+}
+
+function displayHighValueAccounts(accounts) {
+    const container = document.getElementById('highValueAccounts');
+    container.innerHTML = accounts.map(a => `
+        <div class="computer-row">
+            <strong>${esc(a.samaccountname)}</strong>
+            <br>
+            <small>${esc(a.group)}</small>
+            <br>
+            <span class="badge ${a.enabled ? 'badge-success' : 'badge-secondary'}">
+                ${a.enabled ? 'Enabled' : 'Disabled'}
+            </span>
+        </div>
+    `).join('');
+}
+
+function formatTimestamp(ts) {
+    if (!ts) return 'Never';
+    const date = new Date(ts * 1000);
+    return date.toLocaleDateString();
+}
+
+function formatOU(dn) {
+    if (!dn) return 'N/A';
+    const parts = dn.split(',');
+    return parts.filter(p => p.startsWith('OU=')).map(p => p.replace('OU=','')).reverse().join(' \\ ');
+}
+
+function exportToCSV() {
+    const csv = [
+        ['Hostname', 'IP', 'OS', 'Type', 'Last Logon', 'DN'],
+        ...discoveredComputers.map(c => [
+            c.hostname || c.name,
+            (c.ips || []).join(';'),
+            c.os,
+            c.type,
+            formatTimestamp(c.last_logon),
+            c.dn
+        ])
+    ].map(row => row.map(cell => `"${cell || ''}"`).join(',')).join('\n');
+    
+    const blob = new Blob([csv], {type: 'text/csv'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'ad_discovery.csv';
+    a.click();
+}
+
+function addToTargets() {
+    const ips = discoveredComputers
+        .filter(c => c.ips && c.ips.length > 0)
+        .flatMap(c => c.ips);
+    
+    fetch('/api/targets/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ips})
+    })
+    .then(r => r.json())
+    .then(data => {
+        showToast('Added ' + ips.length + ' IPs to target list', 'success');
+    });
+}
+</script>
+{% endblock %}
