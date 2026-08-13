@@ -358,6 +358,8 @@ def cmd_daemon(orchestrator: HostVigilOrchestrator, args: argparse.Namespace) ->
         }
     )
 
+    from hostvigil.dashboard.server import run_server
+
     # FIX #12: Wrap dashboard start in try/except for port-in-use errors
     # FIX #XX: Supervisor loop — if the dashboard thread dies (unhandled
     # exception, runtime error), restart it with exponential backoff instead
@@ -370,8 +372,8 @@ def cmd_daemon(orchestrator: HostVigilOrchestrator, args: argparse.Namespace) ->
         nonlocal dashboard_restarts, dashboard_backoff
         while not orchestrator._shutdown_event.is_set():
             try:
-                app.run(host=bind_host, port=bind_port, debug=False, use_reloader=False)
-                # app.run() returned cleanly (server stopped) — nothing to restart
+                run_server(app, host=bind_host, port=bind_port)
+                # run_server() returned cleanly (server stopped) — nothing to restart
                 return
             except OSError as e:
                 print(f"[!] WARNING: Dashboard failed to start: {e}")

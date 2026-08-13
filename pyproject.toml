@@ -35,6 +35,7 @@ classifiers = [
 ]
 dependencies = [
     "flask==3.1.3",
+    "gunicorn==23.0.0",
     "pyyaml==6.0.3",
     "numpy>=1.26,<3.0",
     "scapy==2.7.0",
@@ -85,5 +86,5 @@ select = ["E", "F", "W", "I"]
 ignore = ["E501"]
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "hostvigil/tests"]
+testpaths = ["hostvigil/tests"]
 python_files = ["test_*.py"]

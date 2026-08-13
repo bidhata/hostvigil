@@ -64,7 +64,8 @@ python -m venv venv && source venv/bin/activate  # Linux/macOS
 pip install -r requirements.txt
 
 # Start the daemon (continuous stealth recon + dashboard)
-python run.py daemon
+python run.py daemon          # foreground (Ctrl+C to stop)
+python run.py daemon -b       # background (use 'python run.py kill' to stop)
 # → Dashboard at http://localhost:5000
 ```
 
@@ -218,7 +219,7 @@ python run.py -c hostvigil/stealth_configs/ghost_mode.yaml daemon
 
 ## 📊 Dashboard
 
-Premium Vuexy-inspired admin interface with ApexCharts, dark/light mode, and optimized for 500k+ hosts:
+Premium Vuexy-inspired admin interface with ApexCharts, dark/light mode, and optimized for 500k+ hosts. The dashboard runs on **gunicorn** (2 workers, 4 threads each) for production-grade request handling, with automatic fallback to Flask's built-in server if gunicorn is not installed.
 
 - **Dashboard** — Stat cards (hosts, ports, vulns, anomalies), ApexCharts area/donut charts, recent scans, top vulnerabilities
 - **Hosts** — Server-side paginated DataTable (50/page), search with debounce, status/OS filters — handles 500k hosts without crashing
@@ -446,7 +447,8 @@ python run.py paths           # Attack path / chain analysis
 
 # ─── Pipeline Modes ──────────────────────────────
 python run.py full            # Single full pipeline run
-python run.py daemon          # Continuous background recon + dashboard (no Nuclei)
+python run.py daemon          # Continuous recon + dashboard (foreground)
+python run.py daemon -b       # Same, but forks into background (no screen/tmux)
 python run.py kill            # Kill a running daemon process
 python run.py wipe            # Self-destruct: securely wipe ALL data
 python run.py wipe --force    # Skip confirmation
@@ -483,6 +485,7 @@ python run.py schema               # DB schema + applied migrations
 python run.py schema --json        # Machine-readable schema
 python run.py doctor               # Environment/config/db health check
 python run.py doctor --verbose     # Includes scale analysis & phase time estimates
+python run.py doctor --json        # Machine-readable health check
 
 # ─── Options ─────────────────────────────────────
 python run.py -c custom_config.yaml daemon   # Custom config
@@ -635,6 +638,8 @@ hostvigil:
     nuclei_interval_hours: 6
 ```
 
+> **Production server:** The dashboard uses gunicorn (2 workers, 4 threads) for production-grade request handling. Configuration is in `hostvigil/dashboard/server.py`. If gunicorn is not installed, it falls back to Flask's built-in werkzeug server automatically — no config changes needed.
+
 ---
 
 ### 🏢 Enterprise Config (200k+ Hosts)
@@ -763,6 +768,7 @@ HostVigil/
 │   │   └── nuclei_runner.py        # Rate-limited vulnerability scanning
 │   ├── dashboard/
 │   │   ├── app.py                  # Flask app factory + API endpoints
+│   │   ├── server.py               # Gunicorn production server launcher
 │   │   ├── exports.py              # Export API blueprint (JSON/CSV/Report/PDF/ZIP)
 │   │   ├── templates/              # 20 dashboard pages (Bootstrap 5, dark theme)
 │   │   │   ├── index.html          # Overview
@@ -839,6 +845,7 @@ pip install -r requirements.txt
 
 ```
 flask==3.1.3
+gunicorn==23.0.0
 pyyaml==6.0.3
 numpy>=1.26,<3.0
 scapy==2.7.0

@@ -208,3 +208,31 @@
 2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
 2026-08-12T17:23:33.685Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/hv_fe_nmh65ujb/test.db)
 2026-08-12T17:23:33.758Z bidhata-Alienware hostvigil[1789521] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5994
+2026-08-12T18:32:11.317Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T18:32:11.317Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '10.0.0.0/24']
+2026-08-12T18:32:11.317Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T18:32:11.317Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T18:32:11.317Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.nuclei Nuclei binary resolved to /usr/local/bin/nuclei
+2026-08-12T18:32:11.321Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T18:32:11.321Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T18:32:11.321Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T18:32:11.321Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T18:32:11.321Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/commandcode-0/-root-HostVigil/8f0cc97a-4e0e-4db9-accb-a2f5fcb48f30/scratchpad/hostvigil_seed.db)
+2026-08-12T18:32:11.336Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5077
+2026-08-12T18:46:11.323Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Received signal SIGTERM
+2026-08-12T18:46:11.323Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator Shutdown requested
+2026-08-12T18:46:11.324Z bidhata-Alienware hostvigil[1834454] INFO hostvigil.orchestrator HostVigil shutdown complete
+2026-08-12T18:46:14.890Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.discovery Auto-detected local subnets: ['10.1.10.0/24'] (will scan first)
+2026-08-12T18:46:14.890Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.discovery StealthDiscovery initialized: techniques=['nmap_discover', 'arp_sweep', 'passive_sniff', 'mdns_enum', 'nbns_query', 'dns_reverse_walk', 'snmp_sweep', 'ssdp_discover', 'tcp_syn_discover', 'dhcp_passive', 'dns_custom'], targets=['10.1.10.0/24', '10.0.0.0/24']
+2026-08-12T18:46:14.890Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.scanner StealthScanner initialized: scan_type=connect, threads=3, connect_timeout=1.50s, banner_timeout=1.50s, inter_port_delay=150ms, two_phase=True, delay=10.0-45.0s
+2026-08-12T18:46:14.890Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.ml_engine No saved model found - starting in rule-based mode
+2026-08-12T18:46:14.890Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.nuclei Nuclei binary resolved to /usr/local/bin/nuclei
+2026-08-12T18:46:14.892Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Delays [discovery+scan] on: 10.00-45.00s (nmap/naabu rate controls)
+2026-08-12T18:46:14.892Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Delays [service_enum] on: 10.00-45.00s (per-host delay in enumerate_all)
+2026-08-12T18:46:14.892Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Delays [tls_inspection] on: 10.00-45.00s (per-host:port delay in inspect_all)
+2026-08-12T18:46:14.892Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Delays [os_fingerprint] on: 10.00-45.00s (per-host delay in fingerprint_all)
+2026-08-12T18:46:14.892Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator HostVigil Orchestrator initialized (db=/tmp/commandcode-0/-root-HostVigil/8f0cc97a-4e0e-4db9-accb-a2f5fcb48f30/scratchpad/hostvigil_seed.db)
+2026-08-12T18:46:14.907Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Starting dashboard on 127.0.0.1:5077
+2026-08-12T18:50:28.242Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Received signal SIGTERM
+2026-08-12T18:50:28.242Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator Shutdown requested
+2026-08-12T18:50:28.242Z bidhata-Alienware hostvigil[1848345] INFO hostvigil.orchestrator HostVigil shutdown complete

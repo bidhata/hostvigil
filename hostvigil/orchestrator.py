@@ -1889,6 +1889,8 @@ class HostVigilOrchestrator:
         """Start the web dashboard."""
         import secrets as _secrets
 
+        from hostvigil.dashboard.server import run_server
+
         dashboard_config = self.config.dashboard
         bind_host = host or dashboard_config.get("host", "127.0.0.1")
         bind_port = port or dashboard_config.get("port", 5000)
@@ -1910,7 +1912,7 @@ class HostVigilOrchestrator:
         logger.info(f"Starting dashboard on {bind_host}:{bind_port}")
         print(f"[*] HostVigil Dashboard: http://{bind_host}:{bind_port}")
         print("[*] Press Ctrl+C to stop")
-        app.run(host=bind_host, port=bind_port, debug=False, use_reloader=False)
+        run_server(app, host=bind_host, port=bind_port)
 
     # ------------------------------------------------------------------
     # Status & Control
