@@ -2812,11 +2812,13 @@ def create_app(config: dict = None):
         tactics = {}
         for row in coverage:
             tac = tactics.setdefault(row["tactic"], {"name": row["tactic"], "techniques": []})
-            tac["techniques"].append({
-                "id": row["technique_id"],
-                "name": row["technique_name"],
-                "hits": row["evidence_count"] or 1,
-            })
+            tac["techniques"].append(
+                {
+                    "id": row["technique_id"],
+                    "name": row["technique_name"],
+                    "hits": row["evidence_count"] or 1,
+                }
+            )
         return jsonify({"tactics": list(tactics.values()), "techniques": coverage})
 
     # --- Risk Score Timeline ---
